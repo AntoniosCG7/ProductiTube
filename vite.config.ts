@@ -55,15 +55,13 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'popup.css') {
-            return 'styles/[name][extname]';
-          }
-          return '[name][extname]';
-        },
+        assetFileNames: '[name].[ext]',
       },
     },
     outDir: distDir,
     emptyOutDir: true,
+  },
+  css: {
+    modules: false,
   },
 });
