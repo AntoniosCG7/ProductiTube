@@ -1,0 +1,25 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# IDE files
+.DS_Store
+.idea/
+
+# Log files
+*.log
+
+# Chrome extension files
+dist/
+build/
+*.pem
+*.crt
+*.key
+
+# Developer's Documentation
+dev-docs/
+
+# Cursor Rules
+.cursorrules
