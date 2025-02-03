@@ -1,4 +1,4 @@
-export const initializeShorts = () => {
+export const initializeShorts = (enable: boolean) => {
   // Hide shorts from homepage and recommendations
   const shortsElements = document.querySelectorAll(
     [
@@ -8,6 +8,6 @@ export const initializeShorts = () => {
   );
 
   shortsElements.forEach((element) => {
-    (element as HTMLElement).style.display = 'none';
+    (element as HTMLElement).style.display = enable ? 'none' : '';
   });
 };
