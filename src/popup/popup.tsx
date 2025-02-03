@@ -38,10 +38,16 @@ const Popup = () => {
     await chrome.storage.sync.set(newSettings);
     setSettings(newSettings);
 
-    // Notify content script of changes
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]?.id) {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'SETTINGS_UPDATED', settings: newSettings });
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id && tab.url?.includes('youtube.com')) {
+        await chrome.tabs.sendMessage(tab.id, {
+          type: 'SETTINGS_UPDATED',
+          settings: newSettings,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating settings:', error);
     }
   };
 
