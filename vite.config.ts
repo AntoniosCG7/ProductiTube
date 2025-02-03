@@ -18,20 +18,23 @@ const copyManifest = () => {
       }
 
       try {
-        // Verify files exist before copying
-        const manifestPath = resolve(publicDir, 'manifest.json');
-        const popupPath = resolve(publicDir, 'popup.html');
-
-        if (!existsSync(manifestPath)) {
-          throw new Error('manifest.json not found in public folder');
-        }
-        if (!existsSync(popupPath)) {
-          throw new Error('popup.html not found in public folder');
+        // Create icons directory
+        const distIconsDir = resolve(distDir, 'icons');
+        if (!existsSync(distIconsDir)) {
+          mkdirSync(distIconsDir);
         }
 
-        // Copy files
-        copyFileSync(manifestPath, resolve(distDir, 'manifest.json'));
-        copyFileSync(popupPath, resolve(distDir, 'popup.html'));
+        // Copy manifest and popup
+        copyFileSync(resolve(publicDir, 'manifest.json'), resolve(distDir, 'manifest.json'));
+        copyFileSync(resolve(publicDir, 'popup.html'), resolve(distDir, 'popup.html'));
+
+        // Copy icons
+        ['16', '48', '128'].forEach((size) => {
+          copyFileSync(
+            resolve(publicDir, `icons/icon${size}.png`),
+            resolve(distDir, `icons/icon${size}.png`)
+          );
+        });
       } catch (error) {
         console.error('Error copying files:', error);
         throw error;
