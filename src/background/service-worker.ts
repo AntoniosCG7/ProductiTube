@@ -4,12 +4,12 @@ chrome.runtime.onInstalled.addListener(() => {
     cleanMode: false,
     hideComments: false,
     hideRelated: false,
-    hideShorts: false
+    hideShorts: false,
   });
 });
 
 // Listen for messages from content script or popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((_message, _sender, sendResponse) => {
   // Handle messages here
   sendResponse({ received: true });
-}); 
+});
