@@ -28,13 +28,11 @@ const copyManifest = () => {
         copyFileSync(resolve(publicDir, 'manifest.json'), resolve(distDir, 'manifest.json'));
         copyFileSync(resolve(publicDir, 'popup.html'), resolve(distDir, 'popup.html'));
 
-        // Copy icons
-        ['16', '48', '128'].forEach((size) => {
-          copyFileSync(
-            resolve(publicDir, `icons/icon${size}.png`),
-            resolve(distDir, `icons/icon${size}.png`)
-          );
-        });
+        // Copy icon
+        copyFileSync(
+          resolve(publicDir, 'icons/icon128.png'),
+          resolve(distDir, 'icons/icon128.png')
+        );
       } catch (error) {
         console.error('Error copying files:', error);
         throw error;
