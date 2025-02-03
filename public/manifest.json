@@ -6,13 +6,12 @@
   "permissions": ["storage", "scripting", "tabs", "activeTab"],
   "host_permissions": ["*://*.youtube.com/*"],
   "background": {
-    "service_worker": "background/service-worker.js"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["content/content-script.js"],
-      "css": ["content/styles/content.css"]
+      "js": ["content.js"]
     }
   ],
   "action": {
