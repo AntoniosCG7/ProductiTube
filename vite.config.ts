@@ -9,28 +9,28 @@ export default defineConfig({
     zipPack({
       outDir: 'package',
       inDir: 'dist',
-      outFileName: 'productitube.zip'
-    })
+      outFileName: 'productitube.zip',
+    }),
   ],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
+  },
   build: {
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'public/popup.html'),
         content: resolve(__dirname, 'src/content/content-script.ts'),
-        background: resolve(__dirname, 'src/background/service-worker.ts')
+        background: resolve(__dirname, 'src/background/service-worker.ts'),
       },
       output: {
-        entryFileNames: chunk => {
+        entryFileNames: (chunk) => {
           return `${chunk.name}/[name].js`;
-        }
-      }
+        },
+      },
     },
     outDir: resolve(__dirname, 'dist'),
-    emptyOutDir: true
+    emptyOutDir: true,
   },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src')
-    }
-  }
-}); 
+});
