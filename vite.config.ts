@@ -42,6 +42,9 @@ const copyManifest = () => {
 
 export default defineConfig({
   plugins: [react(), copyManifest()],
+  resolve: {
+    alias: [{ find: '@', replacement: resolve(__dirname, 'src') }],
+  },
   build: {
     rollupOptions: {
       input: {
@@ -51,6 +54,12 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'popup.css') {
+            return 'styles/[name][extname]';
+          }
+          return '[name][extname]';
+        },
       },
     },
     outDir: distDir,
