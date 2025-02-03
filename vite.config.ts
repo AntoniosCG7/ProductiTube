@@ -1,50 +1,47 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
-import zipPack from 'vite-plugin-zip-pack';
-import { copyFileSync, mkdirSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync } from 'fs';
+
+const root = resolve(__dirname);
+const publicDir = resolve(root, 'public');
+const distDir = resolve(root, 'dist');
 
 // Plugin to copy manifest and other assets
 const copyManifest = () => {
   return {
     name: 'copy-manifest',
     closeBundle: () => {
-      try {
-        mkdirSync('dist');
-      } catch (e) {
-        console.warn('Directory might already exist, skipping...');
+      // Create dist directory if it doesn't exist
+      if (!existsSync(distDir)) {
+        mkdirSync(distDir);
       }
 
-      copyFileSync('public/manifest.json', 'dist/manifest.json');
-      copyFileSync('public/popup.html', 'dist/popup.html');
-
       try {
-        mkdirSync('dist/icons');
-        copyFileSync('public/icons/icon16.png', 'dist/icons/icon16.png');
-        copyFileSync('public/icons/icon48.png', 'dist/icons/icon48.png');
-        copyFileSync('public/icons/icon128.png', 'dist/icons/icon128.png');
-      } catch (e) {
-        console.warn('Icons not found, skipping...');
+        // Verify files exist before copying
+        const manifestPath = resolve(publicDir, 'manifest.json');
+        const popupPath = resolve(publicDir, 'popup.html');
+
+        if (!existsSync(manifestPath)) {
+          throw new Error('manifest.json not found in public folder');
+        }
+        if (!existsSync(popupPath)) {
+          throw new Error('popup.html not found in public folder');
+        }
+
+        // Copy files
+        copyFileSync(manifestPath, resolve(distDir, 'manifest.json'));
+        copyFileSync(popupPath, resolve(distDir, 'popup.html'));
+      } catch (error) {
+        console.error('Error copying files:', error);
+        throw error;
       }
     },
   };
 };
 
 export default defineConfig({
-  plugins: [
-    react(),
-    copyManifest(),
-    zipPack({
-      outDir: 'package',
-      inDir: 'dist',
-      outFileName: 'productitube.zip',
-    }),
-  ],
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-    },
-  },
+  plugins: [react(), copyManifest()],
   build: {
     rollupOptions: {
       input: {
@@ -54,11 +51,9 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
-        chunkFileNames: '[name].js',
-        assetFileNames: '[name].[ext]',
       },
     },
-    outDir: resolve(__dirname, 'dist'),
+    outDir: distDir,
     emptyOutDir: true,
   },
 });
