@@ -5,6 +5,16 @@ export interface Settings {
   hideShorts: boolean;
 }
 
+export interface FeatureCategory {
+  title: string;
+  description: string;
+  features: {
+    key: keyof Settings;
+    label: string;
+    description: string;
+  }[];
+}
+
 export interface Message {
   type: 'SETTINGS_UPDATED';
   settings: Settings;
