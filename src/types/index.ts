@@ -35,7 +35,6 @@ export interface FeatureCategory {
   features: {
     key: keyof Settings;
     label: string;
-    description: string;
   }[];
 }
 
