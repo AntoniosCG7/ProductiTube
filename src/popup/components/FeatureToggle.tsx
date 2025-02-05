@@ -1,47 +1,26 @@
-import { Switch, FormControlLabel, Typography, Box, Tooltip } from '@mui/material';
+import { Box, FormControlLabel, Switch } from '@mui/material';
 
 interface FeatureToggleProps {
   label: string;
-  description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }
 
-export const FeatureToggle = ({ label, description, checked, onChange }: FeatureToggleProps) => (
+export const FeatureToggle = ({ label, checked, onChange }: FeatureToggleProps) => (
   <Box
     sx={{
-      bgcolor: 'rgb(243, 244, 246)',
+      bgcolor: 'rgb(230, 230, 230)',
       borderRadius: 2,
-      p: 1.5,
-      transition: 'background-color 0.3s ease',
+      p: 1.3,
+      transition: 'background-color 0.1s ease',
       '&:hover': {
-        bgcolor: 'rgb(229, 231, 235)',
+        bgcolor: 'rgb(203, 205, 210)',
       },
     }}
   >
-    <Tooltip title={description} placement="left">
-      <FormControlLabel
-        control={
-          <Switch
-            checked={checked}
-            onChange={(e) => onChange(e.target.checked)}
-            color="primary"
-            sx={{
-              '& .MuiSwitch-switchBase': {
-                transition: 'all 0.3s ease',
-              },
-              '& .MuiSwitch-thumb': {
-                transition: 'transform 0.3s ease',
-              },
-            }}
-          />
-        }
-        label={
-          <Typography variant="body2" sx={{ fontWeight: checked ? 500 : 400 }}>
-            {label}
-          </Typography>
-        }
-      />
-    </Tooltip>
+    <FormControlLabel
+      control={<Switch checked={checked} onChange={(e) => onChange(e.target.checked)} />}
+      label={label}
+    />
   </Box>
 );
