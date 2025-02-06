@@ -1,6 +1,5 @@
-import { initializeCleanMode } from './clean-mode.ts';
 import { initializeComments } from './comments.ts';
-import { initializeRelatedVideos } from './related-videos.ts';
+import { initializeRecommendedVideos } from './recommended-videos.ts';
 import { initializeShorts } from './shorts.ts';
 import { initializeHideHomeFeed } from './home-feed.ts';
 
@@ -8,20 +7,17 @@ export const initializeFeatures = async () => {
   try {
     const settings = await chrome.storage.sync.get();
     const applyFeatures = () => {
-      if ('cleanMode' in settings) {
-        initializeCleanMode(settings.cleanMode);
+      if ('hideHomeFeed' in settings) {
+        initializeHideHomeFeed(settings.hideHomeFeed);
+      }
+      if ('hideRecommended' in settings) {
+        initializeRecommendedVideos(settings.hideRecommended);
       }
       if ('hideComments' in settings) {
         initializeComments(settings.hideComments);
       }
-      if ('hideRelated' in settings) {
-        initializeRelatedVideos(settings.hideRelated);
-      }
       if ('hideShorts' in settings) {
         initializeShorts(settings.hideShorts);
-      }
-      if ('hideHomeFeed' in settings) {
-        initializeHideHomeFeed(settings.hideHomeFeed);
       }
     };
 
