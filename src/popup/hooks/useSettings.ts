@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Settings } from '@/types';
 
 const defaultSettings: Settings = {
@@ -29,10 +29,21 @@ export const useSettings = () => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
 
   useEffect(() => {
-    chrome.storage.sync.get().then((stored) => {
-      setSettings(stored as Settings);
-    });
+    const fetchSettings = async () => {
+      const storedSettings = (await chrome.storage.sync.get()) as Partial<Settings>;
+      setSettings((prev) => ({ ...prev, ...storedSettings }));
+    };
+    fetchSettings();
   }, []);
 
-  return [settings, setSettings] as const;
+  const updateSettings = useCallback(
+    async (newSettings: Partial<Settings>) => {
+      const updatedSettings = { ...settings, ...newSettings };
+      await chrome.storage.sync.set(updatedSettings);
+      setSettings(updatedSettings);
+    },
+    [settings]
+  );
+
+  return [settings, updateSettings] as const;
 };
