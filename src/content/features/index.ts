@@ -2,6 +2,7 @@ import { initializeCleanMode } from './clean-mode.ts';
 import { initializeComments } from './comments.ts';
 import { initializeRelatedVideos } from './related-videos.ts';
 import { initializeShorts } from './shorts.ts';
+import { initializeHideHomeFeed } from './home-feed.ts';
 
 export const initializeFeatures = async () => {
   try {
@@ -18,6 +19,9 @@ export const initializeFeatures = async () => {
       }
       if ('hideShorts' in settings) {
         initializeShorts(settings.hideShorts);
+      }
+      if ('hideHomeFeed' in settings) {
+        initializeHideHomeFeed(settings.hideHomeFeed);
       }
     };
 
