@@ -1,4 +1,5 @@
 import { Box, FormControlLabel, Switch } from '@mui/material';
+import './styles/FeatureToggle.css';
 
 interface FeatureToggleProps {
   label: string;
@@ -7,19 +8,9 @@ interface FeatureToggleProps {
 }
 
 export const FeatureToggle = ({ label, checked, onChange }: FeatureToggleProps) => (
-  <Box
-    sx={{
-      bgcolor: 'rgb(230, 230, 230)',
-      borderRadius: 2,
-      p: 1.3,
-      transition: 'background-color 0.1s ease',
-      '&:hover': {
-        bgcolor: 'rgb(203, 205, 210)',
-      },
-    }}
-  >
+  <Box className="feature-toggle" onClick={() => onChange(!checked)}>
     <FormControlLabel
-      control={<Switch checked={checked} onChange={(e) => onChange(e.target.checked)} />}
+      className='form-control-label' control={<Switch checked={checked} onChange={(e) => onChange(e.target.checked)} />}
       label={label}
     />
   </Box>

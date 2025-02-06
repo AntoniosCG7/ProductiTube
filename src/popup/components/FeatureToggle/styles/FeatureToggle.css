@@ -1,0 +1,15 @@
+.feature-toggle {
+  background-color: rgb(230, 230, 230);
+  border-radius: 16px; 
+  padding: 10.4px;
+  transition: background-color 0.1s ease;
+}
+
+.feature-toggle:hover {
+  background-color: rgb(203, 205, 210);
+  cursor: pointer;
+}
+
+.form-control-label:hover {
+  cursor: pointer;
+}

@@ -1,0 +1,17 @@
+.footer-container {
+  background-color: rgb(245, 245, 245);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 400;
+  color: #666;
+}
+
+.footer-button {
+  text-transform: none !important;
+}
