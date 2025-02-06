@@ -10,10 +10,6 @@ export const featureCategories: FeatureCategory[] = [
         label: 'Hide Home Feed',
       },
       {
-        key: 'hideVideoSidebar',
-        label: 'Hide Video Sidebar',
-      },
-      {
         key: 'hideRecommended',
         label: 'Hide Recommended',
       },
@@ -64,7 +60,6 @@ export const featureCategories: FeatureCategory[] = [
       {
         key: 'hideMerchOffers',
         label: 'Hide Merch & Offers',
-     
       },
       {
         key: 'hideVideoInfo',
