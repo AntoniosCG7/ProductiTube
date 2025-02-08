@@ -2,107 +2,51 @@ import { FeatureCategory } from '@/types';
 
 export const featureCategories: FeatureCategory[] = [
   {
+    title: 'Homepage Controls',
+    description: 'Customize the homepage layout and content visibility.',
+    features: [
+      { key: 'hideHomeFeed', label: 'Hide Home Feed' },
+      { key: 'hideShorts', label: 'Hide Shorts' },
+      { key: 'hideSubscriptions', label: 'Hide Subscriptions' },
+      { key: 'hideExplore', label: 'Hide Explore' },
+      { key: 'hideMoreFromYoutube', label: 'Hide More from YouTube' },
+    ],
+  },
+  {
+    title: 'Playback Controls',
+    description: 'Manage video playback features and related elements.',
+    features: [
+      { key: 'disableAutoplay', label: 'Disable Autoplay' },
+      { key: 'hideEndScreenCards', label: 'Hide End Screen Cards' },
+      { key: 'hideEndScreenFeed', label: 'Hide End Screen Feed' },
+    ],
+  },
+  {
+    title: 'Content Visibility',
+    description: 'Control the visibility of video details and interactions.',
+    features: [
+      { key: 'hideChannel', label: 'Hide Channel' },
+      { key: 'hideVideoInfo', label: 'Hide Video Info' },
+      { key: 'hideDescription', label: 'Hide Description' },
+      { key: 'hideButtonsBar', label: 'Hide Buttons Bar' },
+      { key: 'hideComments', label: 'Hide Comments' },
+    ],
+  },
+  {
     title: 'Interface Controls',
-    description: 'Customize YouTube interface elements',
+    description: 'Simplify the platform by hiding interface elements.',
     features: [
-      {
-        key: 'hideHomeFeed',
-        label: 'Hide Home Feed',
-      },
-      {
-        key: 'hideRecommended',
-        label: 'Hide Recommended',
-      },
-      {
-        key: 'hideLiveChat',
-        label: 'Hide Live Chat',
-      },
-      {
-        key: 'hidePlaylist',
-        label: 'Hide Playlist',
-      },
-      {
-        key: 'hideFundraiser',
-        label: 'Hide Fundraiser',
-      },
+      { key: 'hideTopHeader', label: 'Hide Top Header' },
+      { key: 'hideNotifications', label: 'Hide Notifications' },
     ],
   },
   {
-    title: 'Video Overlay Controls',
-    description: 'Manage video-related elements',
+    title: 'Sidebar Controls',
+    description: 'Manage visibility of sidebar content and interactions.',
     features: [
-      {
-        key: 'hideEndScreenFeed',
-        label: 'Hide End Screen Feed',
-      },
-      {
-        key: 'hideEndScreenCards',
-        label: 'Hide End Screen Cards',
-      },
-      {
-        key: 'hideShorts',
-        label: 'Hide Shorts',
-      },
-      {
-        key: 'hideComments',
-        label: 'Hide Comments',
-      },
-      {
-        key: 'hideMixes',
-        label: 'Hide Mixes',
-      },
-    ],
-  },
-  {
-    title: 'Content Controls',
-    description: 'Manage additional content elements',
-    features: [
-      {
-        key: 'hideMerchOffers',
-        label: 'Hide Merch & Offers',
-      },
-      {
-        key: 'hideVideoInfo',
-        label: 'Hide Video Info',
-      },
-      {
-        key: 'hideButtonsBar',
-        label: 'Hide Buttons Bar',
-      },
-      {
-        key: 'hideChannel',
-        label: 'Hide Channel',
-      },
-      {
-        key: 'hideDescription',
-        label: 'Hide Description',
-      },
-    ],
-  },
-  {
-    title: 'Global Page Controls',
-    description: 'Manage site-wide elements',
-    features: [
-      {
-        key: 'hideTopHeader',
-        label: 'Hide Top Header',
-      },
-      {
-        key: 'hideNotifications',
-        label: 'Hide Notifications',
-      },
-      {
-        key: 'hideSearchResults',
-        label: 'Hide Search Results',
-      },
-      {
-        key: 'hideExplore',
-        label: 'Hide Explore',
-      },
-      {
-        key: 'hideSubscriptions',
-        label: 'Hide Subscriptions',
-      },
+      { key: 'hideRecommended', label: 'Hide Recommended' },
+      { key: 'hideLiveChat', label: 'Hide Live Chat' },
+      { key: 'hidePlaylist', label: 'Hide Playlist' },
     ],
   },
 ];
