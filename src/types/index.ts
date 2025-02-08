@@ -1,32 +1,22 @@
 export interface Settings {
-  // Interface Controls
   hideHomeFeed: boolean;
-  hideVideoSidebar: boolean;
+  hideShorts: boolean;
+  hideSubscriptions: boolean;
+  hideExplore: boolean;
+  hideMoreFromYoutube: boolean;
+  disableAutoplay: boolean;
+  hideEndScreenCards: boolean;
+  hideEndScreenFeed: boolean;
+  hideChannel: boolean;
+  hideVideoInfo: boolean;
+  hideDescription: boolean;
+  hideButtonsBar: boolean;
+  hideComments: boolean;
+  hideTopHeader: boolean;
+  hideNotifications: boolean;
   hideRecommended: boolean;
   hideLiveChat: boolean;
   hidePlaylist: boolean;
-  hideFundraiser: boolean;
-
-  // Video Overlay Controls
-  hideEndScreenFeed: boolean;
-  hideEndScreenCards: boolean;
-  hideShorts: boolean;
-  hideComments: boolean;
-  hideMixes: boolean;
-
-  // Content Controls
-  hideMerchOffers: boolean;
-  hideVideoInfo: boolean;
-  hideButtonsBar: boolean;
-  hideChannel: boolean;
-  hideDescription: boolean;
-
-  // Global Page Controls
-  hideTopHeader: boolean;
-  hideNotifications: boolean;
-  hideSearchResults: boolean;
-  hideExplore: boolean;
-  hideSubscriptions: boolean;
 }
 
 export interface FeatureCategory {
