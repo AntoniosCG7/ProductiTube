@@ -33,8 +33,8 @@ export const featureCategories: FeatureCategory[] = [
     ],
   },
   {
-    title: 'Interface Controls',
-    description: 'Simplify the platform by hiding interface elements.',
+    title: 'Header Controls',
+    description: 'Hide header and notification elements.',
     features: [
       { key: 'hideTopHeader', label: 'Hide Top Header' },
       { key: 'hideNotifications', label: 'Hide Notifications' },
