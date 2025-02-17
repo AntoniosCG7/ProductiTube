@@ -4,7 +4,7 @@
  */
 interface ObserverConfig {
   /** CSS selectors to match target elements */
-  selectors: string[];
+  selectors: readonly string[];
   /** Debounce time in milliseconds for handling mutations (default: 100ms) */
   debounceMs?: number;
   /** Additional MutationObserver configuration options */
