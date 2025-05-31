@@ -1,10 +1,24 @@
 chrome.runtime.onInstalled.addListener(() => {
   // Initialize default settings
   chrome.storage.sync.set({
-    cleanMode: false,
-    hideComments: false,
-    hideRelated: false,
+    hideHomeFeed: false,
     hideShorts: false,
+    hideSubscriptions: false,
+    hideExplore: false,
+    hideMoreFromYoutube: false,
+    disableAutoplay: false,
+    hideEndScreenCards: false,
+    hideEndScreenFeed: false,
+    hideChannel: false,
+    hideVideoInfo: false,
+    hideDescription: false,
+    hideButtonsBar: false,
+    hideComments: false,
+    hideTopHeader: false,
+    hideNotifications: false,
+    hideRecommended: false,
+    hideLiveChat: false,
+    hidePlaylist: false,
   });
 });
 
