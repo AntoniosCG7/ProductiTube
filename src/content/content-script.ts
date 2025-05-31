@@ -25,10 +25,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 // Watch for YouTube SPA navigation
+window.addEventListener('yt-navigate-finish', () => {
+  initializeWithSettings();
+});
+
+// Fallback for URL changes
 let lastUrl = location.href;
-new MutationObserver(() => {
+window.addEventListener('popstate', () => {
   if (location.href !== lastUrl) {
     lastUrl = location.href;
     initializeWithSettings();
   }
-}).observe(document, { subtree: true, childList: true });
+});
