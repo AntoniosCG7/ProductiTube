@@ -6,6 +6,10 @@
   padding-left: 11px;
   padding-right: 11px;
   transition: background-color 0.1s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .feature-toggle:hover {
@@ -13,6 +17,28 @@
   cursor: pointer;
 }
 
+.form-control-label {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
 .form-control-label:hover {
   cursor: pointer;
+}
+
+/* Make the label text pass clicks through to parent Box */
+.form-control-label .MuiFormControlLabel-label {
+  pointer-events: none;
+}
+
+/* Ensure the entire FormControlLabel passes clicks through */
+.form-control-label {
+  pointer-events: none;
+}
+
+/* Re-enable pointer events only for the Switch component */
+.form-control-label .MuiSwitch-root {
+  pointer-events: auto;
 }

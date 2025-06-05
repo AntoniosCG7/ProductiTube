@@ -7,11 +7,17 @@ interface FeatureToggleProps {
   onChange: (checked: boolean) => void;
 }
 
-export const FeatureToggle = ({ label, checked, onChange }: FeatureToggleProps) => (
-  <Box className="feature-toggle" onClick={() => onChange(!checked)}>
-    <FormControlLabel
-      className='form-control-label' control={<Switch checked={checked} onChange={(e) => onChange(e.target.checked)} />}
-      label={label}
-    />
-  </Box>
-);
+export const FeatureToggle = ({ label, checked, onChange }: FeatureToggleProps) => {
+  const handleToggle = () => onChange(!checked);
+
+  return (
+    <Box className="feature-toggle" onClick={handleToggle}>
+      <FormControlLabel
+        className="form-control-label"
+        control={<Switch checked={checked} />}
+        label={label}
+        checked={checked}
+      />
+    </Box>
+  );
+};
