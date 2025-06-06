@@ -1,201 +1,228 @@
 /**
- * Configuration options for the feature observer
- * @interface ObserverConfig
+ * High-performance YouTube element hiding system
+ * Uses CSS-only approach for optimal performance
  */
-interface ObserverConfig {
-  /** CSS selectors to match target elements */
-  selectors: readonly string[];
-  /** Debounce time in milliseconds for handling mutations (default: 100ms) */
-  debounceMs?: number;
-  /** Additional MutationObserver configuration options */
-  observerOptions?: MutationObserverInit;
+
+// ===============================
+// FEATURE DEFINITIONS
+// ===============================
+
+interface FeatureConfig {
+  cssClass: string;
+  selectors: string[];
+  needsFallback?: boolean;
+}
+
+const FEATURES: Record<string, FeatureConfig> = {
+  'hide-home-feed': {
+    cssClass: 'productitube-hide-home-feed',
+    selectors: ['#chips-wrapper', 'ytd-browse[page-subtype="home"] #contents'],
+  },
+  'hide-shorts': {
+    cssClass: 'productitube-hide-shorts',
+    selectors: [
+      'ytd-rich-shelf-renderer',
+      'ytd-reel-shelf-renderer',
+      '#shorts-container',
+      'ytd-guide-entry-renderer:has([title="Shorts"])',
+    ],
+    needsFallback: true, // For :has() compatibility
+  },
+  'hide-subscriptions': {
+    cssClass: 'productitube-hide-subscriptions',
+    selectors: [
+      'ytd-guide-entry-renderer:has(a[href="/feed/subscriptions"])',
+      '#sections > ytd-guide-section-renderer:nth-child(2)',
+      'ytd-browse[page-subtype="subscriptions"]',
+    ],
+  },
+  'hide-explore': {
+    cssClass: 'productitube-hide-explore',
+    selectors: [
+      '#sections > ytd-guide-section-renderer:nth-child(3)',
+      'ytd-browse[page-subtype="trending"]',
+    ],
+  },
+  'hide-more-youtube': {
+    cssClass: 'productitube-hide-more-youtube',
+    selectors: ['#sections > ytd-guide-section-renderer:nth-child(4)'],
+  },
+};
+
+// ===============================
+// CSS GENERATION
+// ===============================
+
+/**
+ * Dynamically generates CSS rules to hide elements for each feature.
+ */
+function generateCSS(): string {
+  const rules: string[] = [];
+
+  for (const [featureName, config] of Object.entries(FEATURES)) {
+    const selectorList = config.selectors
+      .map((selector) => `.${config.cssClass} ${selector}`)
+      .join(',\n  ');
+
+    rules.push(
+      `  /* ${featureName.replace('-', ' ').toUpperCase()} */\n  ${selectorList} {\n    display: none !important;\n  }`
+    );
+  }
+
+  return `
+  /* ProductiTube - High-performance element hiding */
+${rules.join('\n\n')}
+
+  /* Fallback for manual hiding */
+  .productitube-hidden {
+    display: none !important;
+  }
+`;
+}
+
+// ===============================
+// STATE
+// ===============================
+
+const activeFeatures = new Set<string>();
+let stylesInjected = false;
+let fallbackObserver: MutationObserver | null = null;
+
+/**
+ * Injects the generated CSS into the document, if not already injected.
+ */
+function injectStyles(): void {
+  if (stylesInjected) return;
+
+  const style = document.createElement('style');
+  style.textContent = generateCSS();
+  (document.head || document.documentElement).appendChild(style);
+  stylesInjected = true;
 }
 
 /**
- * Callback function type for handling feature state changes
- * @callback FeatureCallback
- * @param {HTMLElement[]} elements - Array of HTML elements affected by the feature
- * @param {boolean} enabled - Current state of the feature (true = enabled, false = disabled)
+ * Applies or removes feature CSS classes on the <html> element based on current state.
  */
-type FeatureCallback = (elements: HTMLElement[], enabled: boolean) => void;
+function updateDocumentClasses(): void {
+  const root = document.documentElement;
+  const allClasses = Object.values(FEATURES).map((f) => f.cssClass);
+
+  root.classList.remove(...allClasses);
+
+  activeFeatures.forEach((featureClass) => {
+    root.classList.add(featureClass);
+  });
+}
+
+// ===============================
+// FALLBACK OBSERVER
+// ===============================
 
 /**
- * Creates a toggleable feature handler that manages DOM elements using MutationObserver.
- * Useful for features that need to react to dynamic DOM changes and maintain state.
- *
- * @param {ObserverConfig} config - Configuration for element selection and observation
- * @param {FeatureCallback} callback - Function to handle elements when feature state changes
- * @returns {(enabled: boolean) => () => void} Toggle function that returns a cleanup function
- *
- * @example
- * const handler = createFeatureHandler(
- *   { selectors: ['.video-title'], debounceMs: 200 },
- *   (elements, enabled) => {
- *     elements.forEach(el => {
- *       el.style.color = enabled ? 'red' : '';
- *     });
- *   }
- * );
- *
- * // Enable feature
- * const cleanup = handler(true);
- *
- * // Disable feature
- * handler(false);
- *
- * // Cleanup when component unmounts
- * cleanup();
+ * Sets up a MutationObserver fallback for browsers that don't support :has().
  */
-export const createFeatureHandler = (config: ObserverConfig, callback: FeatureCallback) => {
-  // Track processed elements to avoid duplicate processing
-  const processedElements = new WeakSet<Element>();
-  let observer: MutationObserver | null = null;
-  let debounceTimeout: number | undefined;
-  let isObserving = false;
+function setupFallbackObserver(): void {
+  if (fallbackObserver || CSS.supports('selector(:has(a))')) return;
 
-  /**
-   * Finds all DOM elements matching the configured selectors
-   * @returns {HTMLElement[]} Array of matching HTML elements
-   */
-  const findElements = () =>
-    config.selectors
-      .flatMap((selector) => [...document.querySelectorAll(selector)])
-      .filter((el): el is HTMLElement => el instanceof HTMLElement);
+  console.log('[ProductiTube] Setting up fallback observer for browser compatibility');
 
-  /**
-   * Processes elements based on the feature's enabled state
-   * @param {HTMLElement[]} elements - Elements to process
-   * @param {boolean} enabled - Current feature state
-   */
-  const processElements = (elements: HTMLElement[], enabled: boolean) => {
-    if (!elements.length) return;
+  const observer = new MutationObserver((records) => {
+    if (!activeFeatures.has('productitube-hide-shorts')) return;
 
-    try {
-      if (enabled) {
-        // Only process new elements when enabling
-        const newElements = elements.filter((el) => !processedElements.has(el));
-        if (newElements.length) {
-          callback(newElements, enabled);
-          newElements.forEach((element) => processedElements.add(element));
-        }
-      } else {
-        // When disabling, only process elements we previously modified
-        const trackedElements = elements.filter((el) => processedElements.has(el));
-        if (trackedElements.length) {
-          callback(trackedElements, enabled);
-          trackedElements.forEach((element) => processedElements.delete(element));
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+
+        const shortsLink = node.querySelector?.('[title="Shorts"]');
+        if (shortsLink) {
+          const guideEntry = shortsLink.closest('ytd-guide-entry-renderer');
+          guideEntry?.classList.add('productitube-hidden');
         }
       }
-    } catch (error) {
-      console.error('Error processing elements:', error);
     }
-  };
+  });
 
-  /**
-   * Debounced handler for DOM mutations
-   * @param {boolean} enabled - Current feature state
-   */
-  const handleMutations = (enabled: boolean) => {
-    if (debounceTimeout) {
-      window.clearTimeout(debounceTimeout);
-    }
-
-    debounceTimeout = window.setTimeout(() => {
-      const elements = findElements();
-      processElements(elements, enabled);
-    }, config.debounceMs ?? 100);
-  };
-
-  /**
-   * Checks if a mutation is relevant to our selectors
-   * @param {MutationRecord} mutation - Mutation record to check
-   * @returns {boolean} True if mutation affects our targeted elements
-   */
-  const isRelevantMutation = (mutation: MutationRecord): boolean => {
-    const target = mutation.target as Element;
-
-    // Check if the target itself matches any selector
-    if (config.selectors.some((selector) => target.matches?.(selector))) {
-      return true;
-    }
-
-    // Check if any of the added nodes match any selector
-    for (const node of mutation.addedNodes) {
-      if (node instanceof Element && config.selectors.some((selector) => node.matches(selector))) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  /**
-   * Creates or reuses a MutationObserver instance
-   * @param {boolean} enabled - Current feature state
-   * @returns {MutationObserver} The observer instance
-   */
-  const getObserver = (enabled: boolean) => {
-    if (observer) observer.disconnect();
-
-    observer = new MutationObserver((mutations) => {
-      if (isObserving && mutations.some(isRelevantMutation)) {
-        handleMutations(enabled);
-      }
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      ...config.observerOptions,
-    });
-
-    return observer;
-  };
-
-  /**
-   * Toggle function that enables/disables the feature
-   * @param {boolean} enabled - Whether to enable or disable the feature
-   * @returns {() => void} Cleanup function to remove all listeners and observers
-   */
-  return (enabled: boolean) => {
-    isObserving = enabled;
-
-    if (enabled) {
-      getObserver(enabled);
+  const observeSidebar = () => {
+    const sidebar = document.querySelector('#guide-content, #sections');
+    if (sidebar) {
+      observer.observe(sidebar, { childList: true, subtree: true });
+      fallbackObserver = observer;
     } else {
-      if (observer) {
-        observer.disconnect();
-        observer = null;
-      }
+      setTimeout(observeSidebar, 100);
     }
-
-    // Process all matching elements
-    const elements = findElements();
-    processElements(elements, enabled);
-
-    // Handle SPA navigation
-    const navigationHandler = () => {
-      if (isObserving) {
-        const newElements = findElements();
-        processElements(newElements, enabled);
-      }
-    };
-
-    if (enabled) {
-      document.addEventListener('yt-navigate-finish', navigationHandler);
-    } else {
-      document.removeEventListener('yt-navigate-finish', navigationHandler);
-    }
-
-    // Return cleanup function
-    return () => {
-      isObserving = false;
-      document.removeEventListener('yt-navigate-finish', navigationHandler);
-      window.clearTimeout(debounceTimeout);
-      if (observer) {
-        observer.disconnect();
-        observer = null;
-      }
-    };
   };
-};
+
+  observeSidebar();
+}
+
+/**
+ * Cleans up the fallback observer and removes manually hidden elements.
+ */
+function cleanupFallbackObserver(): void {
+  if (!fallbackObserver) return;
+
+  fallbackObserver.disconnect();
+  fallbackObserver = null;
+
+  document.querySelectorAll('.productitube-hidden').forEach((el) => {
+    el.classList.remove('productitube-hidden');
+  });
+}
+
+// ===============================
+// PUBLIC API
+// ===============================
+
+/**
+ * Enables a feature by injecting CSS and toggling the relevant class on <html>.
+ * Also sets up a MutationObserver fallback if needed.
+ *
+ * @param featureName - The key name of the feature to enable
+ * @returns A cleanup function that disables the feature
+ */
+export function enableFeature(featureName: string): () => void {
+  const config = FEATURES[featureName];
+  if (!config) {
+    console.warn(`[ProductiTube] Unknown feature: ${featureName}`);
+    return () => {};
+  }
+
+  injectStyles();
+  activeFeatures.add(config.cssClass);
+  updateDocumentClasses();
+
+  if (config.needsFallback) {
+    setupFallbackObserver();
+  }
+
+  return () => {
+    activeFeatures.delete(config.cssClass);
+    updateDocumentClasses();
+
+    const needsFallback = Array.from(activeFeatures).some(
+      (cls) => Object.values(FEATURES).find((f) => f.cssClass === cls)?.needsFallback
+    );
+
+    if (!needsFallback) {
+      cleanupFallbackObserver();
+    }
+  };
+}
+
+/**
+ * Returns a list of all available feature keys.
+ */
+export function getAvailableFeatures(): string[] {
+  return Object.keys(FEATURES);
+}
+
+/**
+ * Checks whether a given feature is currently active.
+ *
+ * @param featureName - The name of the feature to check
+ * @returns True if the feature is active, false otherwise
+ */
+export function isFeatureActive(featureName: string): boolean {
+  const config = FEATURES[featureName];
+  return config ? activeFeatures.has(config.cssClass) : false;
+}
