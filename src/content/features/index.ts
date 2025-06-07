@@ -14,7 +14,7 @@ import {
 //   initializeButtonsBar,
 //   initializeComments,
 // } from './content';
-// import { initializeTopHeader, initializeNotifications } from './header';
+import { initializeTopHeader, initializeNotifications } from './header';
 // import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
 
 type FeatureInitializer = (enabled: boolean) => (() => void) | void;
@@ -36,8 +36,8 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
   // hideDescription: initializeDescription,
   // hideEndScreenCards: initializeEndScreenCards,
   // hideEndScreenFeed: initializeEndScreenFeed,
-  // hideTopHeader: initializeTopHeader,
-  // hideNotifications: initializeNotifications,
+  hideTopHeader: initializeTopHeader,
+  hideNotifications: initializeNotifications,
   hideSubscriptions: initializeSubscriptions,
   hideExplore: initializeExplore,
   // hideChannel: initializeChannel,

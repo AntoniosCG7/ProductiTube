@@ -47,6 +47,18 @@ const FEATURES: Record<string, FeatureConfig> = {
     cssClass: 'productitube-hide-more-youtube',
     selectors: ['#sections > ytd-guide-section-renderer:nth-child(4)'],
   },
+  'hide-top-header': {
+    cssClass: 'productitube-hide-top-header',
+    selectors: ['ytd-masthead', '#masthead-container', '#container.ytd-masthead'],
+  },
+  'hide-notifications': {
+    cssClass: 'productitube-hide-notifications',
+    selectors: [
+      'ytd-notification-topbar-button-renderer',
+      '#notification-count',
+      'ytd-notification-renderer',
+    ],
+  },
 };
 
 // ===============================

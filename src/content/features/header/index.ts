@@ -1,43 +1,26 @@
-import { createFeatureHandler } from '../../utils/feature-utils';
+/**
+ * Feature handlers for YouTube header controls
+ * @module features/header
+ */
 
-export const initializeTopHeader = createFeatureHandler(
-  {
-    selectors: ['ytd-masthead', '#masthead-container', '#container.ytd-masthead'],
-    debounceMs: 100,
-    observerOptions: {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['sticky'],
-    },
-  },
-  (elements, enabled) => {
-    elements.forEach((element) => {
-      if (enabled) {
-        element.style.display = 'none';
-      } else {
-        element.style.display = '';
-      }
-    });
-  }
-);
+import { enableFeature } from '../../utils/feature-utils';
 
-export const initializeNotifications = createFeatureHandler(
-  {
-    selectors: [
-      'ytd-notification-topbar-button-renderer',
-      '#notification-count',
-      'ytd-notification-renderer',
-    ],
-    debounceMs: 100,
-  },
-  (elements, enabled) => {
-    elements.forEach((element) => {
-      if (enabled) {
-        element.style.display = 'none';
-      } else {
-        element.style.display = '';
-      }
-    });
-  }
-);
+/**
+ * Initialize top header hiding features
+ * @param enabled - Whether the feature should be enabled
+ * @returns Cleanup function to remove observers
+ */
+export const initializeTopHeader = (enabled: boolean): (() => void) | void => {
+  if (!enabled) return;
+  return enableFeature('hide-top-header');
+};
+
+/**
+ * Initialize notifications hiding features
+ * @param enabled - Whether the feature should be enabled
+ * @returns Cleanup function to remove observers
+ */
+export const initializeNotifications = (enabled: boolean): (() => void) | void => {
+  if (!enabled) return;
+  return enableFeature('hide-notifications');
+};
