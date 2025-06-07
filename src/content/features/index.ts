@@ -6,39 +6,44 @@ import {
   initializeExplore,
   initializeMoreFromYouTube,
 } from './homepage';
-import { initializeAutoplay, initializeEndScreenCards, initializeEndScreenFeed } from './playback';
-import {
-  initializeChannel,
-  initializeVideoInfo,
-  initializeDescription,
-  initializeButtonsBar,
-  initializeComments,
-} from './content';
-import { initializeTopHeader, initializeNotifications } from './header';
-import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
+// import { initializeAutoplay, initializeEndScreenCards, initializeEndScreenFeed } from './playback';
+// import {
+//   initializeChannel,
+//   initializeVideoInfo,
+//   initializeDescription,
+//   initializeButtonsBar,
+//   initializeComments,
+// } from './content';
+// import { initializeTopHeader, initializeNotifications } from './header';
+// import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
 
 type FeatureInitializer = (enabled: boolean) => (() => void) | void;
+
+/**
+ * Storage key for settings (must match popup useSettings hook)
+ */
+const SETTINGS_STORAGE_KEY = 'youtube_settings';
 
 // Map of feature keys to their initialization functions
 const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> = {
   hideHomeFeed: initializeHideHomeFeed,
-  hideRecommended: initializeRecommendedVideos,
-  hideComments: initializeComments,
+  // hideRecommended: initializeRecommendedVideos,
+  // hideComments: initializeComments,
   hideShorts: initializeShorts,
-  hideLiveChat: initializeLiveChat,
-  hideVideoInfo: initializeVideoInfo,
-  hideButtonsBar: initializeButtonsBar,
-  hideDescription: initializeDescription,
-  hideEndScreenCards: initializeEndScreenCards,
-  hideEndScreenFeed: initializeEndScreenFeed,
-  hideTopHeader: initializeTopHeader,
-  hideNotifications: initializeNotifications,
+  // hideLiveChat: initializeLiveChat,
+  // hideVideoInfo: initializeVideoInfo,
+  // hideButtonsBar: initializeButtonsBar,
+  // hideDescription: initializeDescription,
+  // hideEndScreenCards: initializeEndScreenCards,
+  // hideEndScreenFeed: initializeEndScreenFeed,
+  // hideTopHeader: initializeTopHeader,
+  // hideNotifications: initializeNotifications,
   hideSubscriptions: initializeSubscriptions,
   hideExplore: initializeExplore,
-  hideChannel: initializeChannel,
-  hidePlaylist: initializePlaylist,
+  // hideChannel: initializeChannel,
+  // hidePlaylist: initializePlaylist,
   hideMoreFromYoutube: initializeMoreFromYouTube,
-  disableAutoplay: initializeAutoplay,
+  // disableAutoplay: initializeAutoplay,
 } as const;
 
 // Store cleanup functions
@@ -67,8 +72,8 @@ function watchYouTubeNavigation(onNavigate: () => void) {
 
 export const initializeFeatures = async () => {
   try {
-    // Get initial settings
-    const settings = (await chrome.storage.sync.get()) as Partial<Settings>;
+    const storedData = await chrome.storage.sync.get(SETTINGS_STORAGE_KEY);
+    const settings = (storedData[SETTINGS_STORAGE_KEY] || {}) as Partial<Settings>;
     console.debug('Initializing features with settings:', settings);
 
     // Initialize features and store cleanup functions
@@ -106,14 +111,15 @@ export const initializeFeatures = async () => {
       });
     });
 
-    // Listen for settings changes
+    // Listen for settings changes from the new storage structure
     chrome.storage.onChanged.addListener((changes) => {
-      Object.entries(changes).forEach(([key, { newValue }]) => {
-        const settingKey = key as keyof Settings;
+      if (changes[SETTINGS_STORAGE_KEY]) {
+        const newSettings = changes[SETTINGS_STORAGE_KEY].newValue || {};
 
-        const initializer = featureInitializers[settingKey];
+        Object.entries(featureInitializers).forEach(([key, initializer]) => {
+          const settingKey = key as keyof Settings;
+          const newValue = newSettings[settingKey] ?? false;
 
-        if (initializer) {
           // Clean up previous instance
           cleanupFunctions.get(settingKey)?.();
 
@@ -122,8 +128,8 @@ export const initializeFeatures = async () => {
           if (cleanup) {
             cleanupFunctions.set(settingKey, cleanup);
           }
-        }
-      });
+        });
+      }
     });
   } catch (error) {
     console.error('Failed to initialize features:', error);
