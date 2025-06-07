@@ -1,78 +1,36 @@
-import { createFeatureHandler } from '../../utils/feature-utils';
+/**
+ * Feature handlers for YouTube sidebar controls
+ * @module features/sidebar
+ */
 
-export const initializeRecommendedVideos = createFeatureHandler(
-  {
-    selectors: [
-      '#related',
-      '#items.ytd-watch-next-secondary-results-renderer',
-      'ytd-compact-video-renderer',
-      '#secondary',
-      '#secondary-inner',
-    ],
-    debounceMs: 150,
-    observerOptions: {
-      childList: true,
-      subtree: true,
-      attributes: true,
-    },
-  },
-  (elements, enabled) => {
-    elements.forEach((element) => {
-      if (enabled) {
-        element.style.cssText = 'display: none !important';
-      } else {
-        element.style.cssText = '';
-      }
-    });
-  }
-);
+import { enableFeature } from '../../utils/feature-utils';
 
-export const initializeLiveChat = createFeatureHandler(
-  {
-    selectors: ['ytd-live-chat-frame', '#chat:not([collapsed])', '#chat-container'],
-    debounceMs: 100,
-    observerOptions: {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['collapsed'],
-    },
-  },
-  (elements, enabled) => {
-    elements.forEach((element) => {
-      if (enabled) {
-        element.style.cssText = 'display: none !important';
-      } else {
-        element.style.cssText = '';
-      }
-    });
-  }
-);
+/**
+ * Initialize recommended videos hiding features
+ * @param enabled - Whether the feature should be enabled
+ * @returns Cleanup function to remove observers
+ */
+export const initializeRecommendedVideos = (enabled: boolean): (() => void) | void => {
+  if (!enabled) return;
+  return enableFeature('hide-recommended-videos');
+};
 
-export const initializePlaylist = createFeatureHandler(
-  {
-    selectors: [
-      'ytd-playlist-panel-renderer',
-      '#playlist-container',
-      '#playlist-action-menu',
-      'ytd-playlist-video-renderer',
-      '.ytd-playlist-panel-renderer',
-    ],
-    debounceMs: 150,
-    observerOptions: {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['hidden', 'is-playlist'],
-    },
-  },
-  (elements, enabled) => {
-    elements.forEach((element) => {
-      if (enabled) {
-        element.style.cssText = 'display: none !important';
-      } else {
-        element.style.cssText = '';
-      }
-    });
-  }
-);
+/**
+ * Initialize live chat hiding features
+ * @param enabled - Whether the feature should be enabled
+ * @returns Cleanup function to remove observers
+ */
+export const initializeLiveChat = (enabled: boolean): (() => void) | void => {
+  if (!enabled) return;
+  return enableFeature('hide-live-chat');
+};
+
+/**
+ * Initialize playlist hiding features
+ * @param enabled - Whether the feature should be enabled
+ * @returns Cleanup function to remove observers
+ */
+export const initializePlaylist = (enabled: boolean): (() => void) | void => {
+  if (!enabled) return;
+  return enableFeature('hide-playlist');
+};

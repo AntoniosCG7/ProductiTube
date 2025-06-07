@@ -15,22 +15,22 @@ import {
 //   initializeComments,
 // } from './content';
 import { initializeTopHeader, initializeNotifications } from './header';
-// import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
+import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
 
 type FeatureInitializer = (enabled: boolean) => (() => void) | void;
 
 /**
- * Storage key for settings (must match popup useSettings hook)
+ * Storage key for settings
  */
 const SETTINGS_STORAGE_KEY = 'youtube_settings';
 
 // Map of feature keys to their initialization functions
 const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> = {
   hideHomeFeed: initializeHideHomeFeed,
-  // hideRecommended: initializeRecommendedVideos,
+  hideRecommended: initializeRecommendedVideos,
   // hideComments: initializeComments,
   hideShorts: initializeShorts,
-  // hideLiveChat: initializeLiveChat,
+  hideLiveChat: initializeLiveChat,
   // hideVideoInfo: initializeVideoInfo,
   // hideButtonsBar: initializeButtonsBar,
   // hideDescription: initializeDescription,
@@ -41,7 +41,7 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
   hideSubscriptions: initializeSubscriptions,
   hideExplore: initializeExplore,
   // hideChannel: initializeChannel,
-  // hidePlaylist: initializePlaylist,
+  hidePlaylist: initializePlaylist,
   hideMoreFromYoutube: initializeMoreFromYouTube,
   // disableAutoplay: initializeAutoplay,
 } as const;

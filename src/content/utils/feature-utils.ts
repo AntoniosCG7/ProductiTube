@@ -10,7 +10,6 @@
 interface FeatureConfig {
   cssClass: string;
   selectors: string[];
-  needsFallback?: boolean;
 }
 
 const FEATURES: Record<string, FeatureConfig> = {
@@ -26,7 +25,6 @@ const FEATURES: Record<string, FeatureConfig> = {
       '#shorts-container',
       'ytd-guide-entry-renderer:has([title="Shorts"])',
     ],
-    needsFallback: true, // For :has() compatibility
   },
   'hide-subscriptions': {
     cssClass: 'productitube-hide-subscriptions',
@@ -59,6 +57,35 @@ const FEATURES: Record<string, FeatureConfig> = {
       'ytd-notification-renderer',
     ],
   },
+  'hide-recommended-videos': {
+    cssClass: 'productitube-hide-recommended-videos',
+    selectors: [
+      '#related',
+      '#items.ytd-watch-next-secondary-results-renderer',
+      '#secondary ytd-compact-video-renderer',
+      '#secondary ytd-item-section-renderer:has(ytd-compact-video-renderer)',
+      '#contents > ytd-rich-item-renderer:has(ytd-compact-video-renderer)',
+    ],
+  },
+  'hide-playlist': {
+    cssClass: 'productitube-hide-playlist',
+    selectors: [
+      'ytd-playlist-panel-renderer',
+      '#playlist-container',
+      '#playlist-action-menu',
+      'ytd-playlist-video-renderer',
+      '.ytd-playlist-panel-renderer',
+    ],
+  },
+  'hide-live-chat': {
+    cssClass: 'productitube-hide-live-chat',
+    selectors: [
+      'ytd-live-chat-frame',
+      '#chat:not([collapsed])',
+      '#chat-container',
+      '#live-chat-container',
+    ],
+  },
 };
 
 // ===============================
@@ -84,11 +111,6 @@ function generateCSS(): string {
   return `
   /* ProductiTube - High-performance element hiding */
 ${rules.join('\n\n')}
-
-  /* Fallback for manual hiding */
-  .productitube-hidden {
-    display: none !important;
-  }
 `;
 }
 
@@ -98,7 +120,6 @@ ${rules.join('\n\n')}
 
 const activeFeatures = new Set<string>();
 let stylesInjected = false;
-let fallbackObserver: MutationObserver | null = null;
 
 /**
  * Injects the generated CSS into the document, if not already injected.
@@ -127,61 +148,6 @@ function updateDocumentClasses(): void {
 }
 
 // ===============================
-// FALLBACK OBSERVER
-// ===============================
-
-/**
- * Sets up a MutationObserver fallback for browsers that don't support :has().
- */
-function setupFallbackObserver(): void {
-  if (fallbackObserver || CSS.supports('selector(:has(a))')) return;
-
-  console.log('[ProductiTube] Setting up fallback observer for browser compatibility');
-
-  const observer = new MutationObserver((records) => {
-    if (!activeFeatures.has('productitube-hide-shorts')) return;
-
-    for (const record of records) {
-      for (const node of record.addedNodes) {
-        if (!(node instanceof HTMLElement)) continue;
-
-        const shortsLink = node.querySelector?.('[title="Shorts"]');
-        if (shortsLink) {
-          const guideEntry = shortsLink.closest('ytd-guide-entry-renderer');
-          guideEntry?.classList.add('productitube-hidden');
-        }
-      }
-    }
-  });
-
-  const observeSidebar = () => {
-    const sidebar = document.querySelector('#guide-content, #sections');
-    if (sidebar) {
-      observer.observe(sidebar, { childList: true, subtree: true });
-      fallbackObserver = observer;
-    } else {
-      setTimeout(observeSidebar, 100);
-    }
-  };
-
-  observeSidebar();
-}
-
-/**
- * Cleans up the fallback observer and removes manually hidden elements.
- */
-function cleanupFallbackObserver(): void {
-  if (!fallbackObserver) return;
-
-  fallbackObserver.disconnect();
-  fallbackObserver = null;
-
-  document.querySelectorAll('.productitube-hidden').forEach((el) => {
-    el.classList.remove('productitube-hidden');
-  });
-}
-
-// ===============================
 // PUBLIC API
 // ===============================
 
@@ -203,21 +169,9 @@ export function enableFeature(featureName: string): () => void {
   activeFeatures.add(config.cssClass);
   updateDocumentClasses();
 
-  if (config.needsFallback) {
-    setupFallbackObserver();
-  }
-
   return () => {
     activeFeatures.delete(config.cssClass);
     updateDocumentClasses();
-
-    const needsFallback = Array.from(activeFeatures).some(
-      (cls) => Object.values(FEATURES).find((f) => f.cssClass === cls)?.needsFallback
-    );
-
-    if (!needsFallback) {
-      cleanupFallbackObserver();
-    }
   };
 }
 
