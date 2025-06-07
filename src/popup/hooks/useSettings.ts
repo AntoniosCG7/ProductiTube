@@ -32,35 +32,101 @@ const defaultSettings: Settings = {
 const SETTINGS_STORAGE_KEY = 'youtube_settings';
 
 /**
- * Debounce delay for saving settings (in milliseconds)
+ * Rate limiting configuration for Chrome storage
  */
-const SAVE_DEBOUNCE_DELAY = 500;
+const RATE_LIMIT_CONFIG = {
+  maxWritesPerMinute: 100,
+  maxWritesPerHour: 1500,
+  baseDebounceMs: 16,
+  aggressiveDebounceMs: 1000,
+  maxDebounceMs: 3000,
+};
 
 /**
- * Custom hook for managing extension settings with chrome.storage.sync
- * Provides debounced updates and error handling
- *
- * @returns {[Settings, (newSettings: Partial<Settings>) => Promise<void>]}
- * Tuple containing current settings and update function
- *
- * @example
- * const [settings, updateSettings] = useSettings();
- *
- * // Update a single setting
- * updateSettings({ hideHomeFeed: true });
- *
- * // Update multiple settings
- * updateSettings({
- *   hideShorts: true,
- *   hideComments: true
- * });
+ * Minimal storage operation tracker optimized for performance
+ */
+class StorageRateTracker {
+  private operationCount = 0;
+  private lastOperationTime = 0;
+  private heavyUsageMode = false;
+  private writeOperations: number[] = [];
+
+  recordWrite(): void {
+    const now = Date.now();
+    this.operationCount++;
+    this.lastOperationTime = now;
+
+    // Only enable heavy tracking if we detect intensive usage
+    if (!this.heavyUsageMode && this.operationCount >= 15) {
+      this.heavyUsageMode = true;
+      this.writeOperations = [now];
+      console.log('[ProductiTube] Heavy usage detected, enabling rate limiting');
+    }
+
+    if (this.heavyUsageMode) {
+      this.writeOperations.push(now);
+
+      // Clean up old operations periodically
+      if (this.writeOperations.length > 200) {
+        const cutoff = now - 60 * 60 * 1000; // 1 hour
+        this.writeOperations = this.writeOperations.filter((time) => time > cutoff);
+      }
+    }
+  }
+
+  isRateLimited(): { limited: boolean; waitMs?: number } {
+    if (!this.heavyUsageMode) return { limited: false };
+
+    const now = Date.now();
+    const cutoff = now - 60 * 1000; // 1 minute
+    const recentWrites = this.writeOperations.filter((time) => time > cutoff).length;
+
+    return recentWrites >= 80 ? { limited: true, waitMs: 60 * 1000 } : { limited: false };
+  }
+
+  getOptimalDebounceMs(): number {
+    // Normal usage: minimal delay
+    if (!this.heavyUsageMode) {
+      return RATE_LIMIT_CONFIG.baseDebounceMs;
+    }
+
+    // Heavy usage: check actual rates
+    const now = Date.now();
+    const cutoff = now - 60 * 1000;
+    const recentWrites = this.writeOperations.filter((time) => time > cutoff).length;
+
+    if (recentWrites >= 60) return RATE_LIMIT_CONFIG.maxDebounceMs;
+    if (recentWrites >= 40) return RATE_LIMIT_CONFIG.aggressiveDebounceMs;
+    return RATE_LIMIT_CONFIG.baseDebounceMs;
+  }
+
+  // Reset counter periodically to avoid staying in heavy mode forever
+  resetIfIdle(): void {
+    const now = Date.now();
+    if (this.heavyUsageMode && now - this.lastOperationTime > 300000) {
+      // 5 minutes idle
+      this.heavyUsageMode = false;
+      this.operationCount = 0;
+      this.writeOperations = [];
+      console.log('[ProductiTube] Resetting to normal mode after idle period');
+    }
+  }
+}
+
+const rateTracker = new StorageRateTracker();
+
+/**
+ * Enhanced settings hook with rate limiting and error recovery
  */
 export const useSettings = () => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [error, setError] = useState<Error | null>(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
+
   const updateTimeoutRef = useRef<number>();
   const pendingUpdatesRef = useRef<Partial<Settings>>({});
   const isMountedRef = useRef(true);
+  const retryTimeoutRef = useRef<number>();
 
   /**
    * Fetches settings from chrome.storage.sync
@@ -80,6 +146,116 @@ export const useSettings = () => {
       setError(error instanceof Error ? error : new Error('Failed to fetch settings'));
     }
   }, []);
+
+  /**
+   * Performs the actual storage write with rate limiting
+   */
+  const performStorageWrite = useCallback(async (): Promise<void> => {
+    if (!isMountedRef.current || Object.keys(pendingUpdatesRef.current).length === 0) {
+      return;
+    }
+
+    // Check rate limits
+    const rateLimitStatus = rateTracker.isRateLimited();
+    if (rateLimitStatus.limited) {
+      console.warn('[ProductiTube] Rate limited, delaying storage write');
+      setIsRateLimited(true);
+
+      // Retry after the wait period
+      retryTimeoutRef.current = window.setTimeout(() => {
+        if (isMountedRef.current) {
+          setIsRateLimited(false);
+          performStorageWrite();
+        }
+      }, rateLimitStatus.waitMs);
+
+      return;
+    }
+
+    try {
+      setIsRateLimited(false);
+
+      const finalSettings = {
+        ...settings,
+        ...pendingUpdatesRef.current,
+      };
+
+      await chrome.storage.sync.set({
+        [SETTINGS_STORAGE_KEY]: finalSettings,
+      });
+
+      // Record successful write
+      rateTracker.recordWrite();
+      pendingUpdatesRef.current = {};
+      setError(null);
+
+      console.debug('[ProductiTube] Settings saved successfully');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+
+      // Handle quota exceeded errors specifically
+      if (error instanceof Error && error.message.includes('QUOTA_BYTES_PER_ITEM')) {
+        setError(new Error('Settings data too large. Please contact support.'));
+      } else if (
+        error instanceof Error &&
+        error.message.includes('MAX_WRITE_OPERATIONS_PER_MINUTE')
+      ) {
+        setError(new Error('Too many changes. Please wait a moment before making more changes.'));
+        setIsRateLimited(true);
+
+        // Retry after a longer delay
+        retryTimeoutRef.current = window.setTimeout(() => {
+          if (isMountedRef.current) {
+            setIsRateLimited(false);
+            performStorageWrite();
+          }
+        }, 60000); // Wait 1 minute
+      } else {
+        setError(error instanceof Error ? error : new Error('Failed to save settings'));
+
+        // Revert local state on other errors
+        fetchSettings();
+      }
+    }
+  }, [settings, fetchSettings]);
+
+  /**
+   * Updates settings with intelligent debouncing and rate limiting
+   */
+  const updateSettings = useCallback(
+    async (newSettings: Partial<Settings>) => {
+      // Update local state immediately for responsive UI
+      setSettings((prev) => ({ ...prev, ...newSettings }));
+
+      // Accumulate pending updates
+      pendingUpdatesRef.current = {
+        ...pendingUpdatesRef.current,
+        ...newSettings,
+      };
+
+      // Clear existing timeout
+      if (updateTimeoutRef.current) {
+        window.clearTimeout(updateTimeoutRef.current);
+      }
+
+      // Check if we should reset heavy usage mode due to inactivity
+      rateTracker.resetIfIdle();
+
+      // For normal usage (first 15 operations), use minimal delay
+      if (!rateTracker['heavyUsageMode']) {
+        updateTimeoutRef.current = window.setTimeout(
+          performStorageWrite,
+          RATE_LIMIT_CONFIG.baseDebounceMs
+        );
+        return;
+      }
+
+      // Heavy usage mode: use adaptive debouncing
+      const debounceMs = rateTracker.getOptimalDebounceMs();
+      updateTimeoutRef.current = window.setTimeout(performStorageWrite, debounceMs);
+    },
+    [performStorageWrite]
+  );
 
   // Initialize settings on mount
   useEffect(() => {
@@ -104,55 +280,17 @@ export const useSettings = () => {
     };
   }, [fetchSettings]);
 
-  /**
-   * Updates settings with debouncing and error handling
-   */
-  const updateSettings = useCallback(
-    async (newSettings: Partial<Settings>) => {
-      // Update local state immediately
-      setSettings((prev) => ({ ...prev, ...newSettings }));
-
-      // Accumulate updates
-      pendingUpdatesRef.current = {
-        ...pendingUpdatesRef.current,
-        ...newSettings,
-      };
-
-      // Clear existing timeout
-      if (updateTimeoutRef.current) {
-        window.clearTimeout(updateTimeoutRef.current);
-      }
-
-      // Debounce storage updates
-      updateTimeoutRef.current = window.setTimeout(async () => {
-        try {
-          await chrome.storage.sync.set({
-            [SETTINGS_STORAGE_KEY]: {
-              ...settings,
-              ...pendingUpdatesRef.current,
-            },
-          });
-          pendingUpdatesRef.current = {};
-          setError(null);
-        } catch (error) {
-          console.error('Failed to update settings:', error);
-          setError(error instanceof Error ? error : new Error('Failed to update settings'));
-          // Revert local state on error
-          fetchSettings();
-        }
-      }, SAVE_DEBOUNCE_DELAY);
-    },
-    [settings, fetchSettings]
-  );
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (updateTimeoutRef.current) {
         window.clearTimeout(updateTimeoutRef.current);
       }
+      if (retryTimeoutRef.current) {
+        window.clearTimeout(retryTimeoutRef.current);
+      }
     };
   }, []);
 
-  return [settings, updateSettings, error] as const;
+  return [settings, updateSettings, error, isRateLimited] as const;
 };
