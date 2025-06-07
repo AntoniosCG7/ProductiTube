@@ -86,6 +86,54 @@ const FEATURES: Record<string, FeatureConfig> = {
       '#live-chat-container',
     ],
   },
+  'hide-channel': {
+    cssClass: 'productitube-hide-channel',
+    selectors: [
+      '#owner',
+      '#owner-container',
+      'ytd-video-owner-renderer',
+      '#upload-info',
+      '#top-row ytd-channel-name',
+    ],
+  },
+  'hide-video-info': {
+    cssClass: 'productitube-hide-video-info',
+    selectors: [
+      'ytd-watch-metadata #title',
+      'ytd-watch-metadata #info',
+      'ytd-watch-metadata #top-row',
+      'ytd-watch-metadata #bottom-row',
+      'ytd-watch-metadata .ytd-video-primary-info-renderer',
+      'ytd-watch-metadata #description',
+      'ytd-watch-metadata #description-inline-expander',
+      'ytd-watch-metadata .ytd-video-secondary-info-renderer',
+    ],
+  },
+  'hide-description': {
+    cssClass: 'productitube-hide-description',
+    selectors: ['#description', '#structured-description'],
+  },
+  'hide-buttons-bar': {
+    cssClass: 'productitube-hide-buttons-bar',
+    selectors: [
+      '#top-level-buttons-computed',
+      '#subscribe-button',
+      '#actions-inner',
+      'ytd-watch-metadata #menu-container',
+      'ytd-watch-metadata .ytd-menu-renderer',
+      '#flexible-item-buttons',
+    ],
+  },
+  'hide-comments': {
+    cssClass: 'productitube-hide-comments',
+    selectors: [
+      '#comments',
+      'ytd-comments',
+      '#comment-section-renderer',
+      '#sections > ytd-comments',
+      'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"]',
+    ],
+  },
 };
 
 // ===============================

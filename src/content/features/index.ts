@@ -7,13 +7,13 @@ import {
   initializeMoreFromYouTube,
 } from './homepage';
 // import { initializeAutoplay, initializeEndScreenCards, initializeEndScreenFeed } from './playback';
-// import {
-//   initializeChannel,
-//   initializeVideoInfo,
-//   initializeDescription,
-//   initializeButtonsBar,
-//   initializeComments,
-// } from './content';
+import {
+  initializeChannel,
+  initializeVideoInfo,
+  initializeDescription,
+  initializeButtonsBar,
+  initializeComments,
+} from './content';
 import { initializeTopHeader, initializeNotifications } from './header';
 import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
 
@@ -28,19 +28,19 @@ const SETTINGS_STORAGE_KEY = 'youtube_settings';
 const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> = {
   hideHomeFeed: initializeHideHomeFeed,
   hideRecommended: initializeRecommendedVideos,
-  // hideComments: initializeComments,
+  hideComments: initializeComments,
   hideShorts: initializeShorts,
   hideLiveChat: initializeLiveChat,
-  // hideVideoInfo: initializeVideoInfo,
-  // hideButtonsBar: initializeButtonsBar,
-  // hideDescription: initializeDescription,
+  hideVideoInfo: initializeVideoInfo,
+  hideButtonsBar: initializeButtonsBar,
+  hideDescription: initializeDescription,
   // hideEndScreenCards: initializeEndScreenCards,
   // hideEndScreenFeed: initializeEndScreenFeed,
   hideTopHeader: initializeTopHeader,
   hideNotifications: initializeNotifications,
   hideSubscriptions: initializeSubscriptions,
   hideExplore: initializeExplore,
-  // hideChannel: initializeChannel,
+  hideChannel: initializeChannel,
   hidePlaylist: initializePlaylist,
   hideMoreFromYoutube: initializeMoreFromYouTube,
   // disableAutoplay: initializeAutoplay,
