@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ThemeProvider, CssBaseline, Box, Paper } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Paper, Alert } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
 import { useSettings } from './hooks/useSettings';
 import { updateContentScript, getActiveYouTubeTab } from './utils/settings';
@@ -22,28 +22,23 @@ const theme = createTheme({
 
 const Popup: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState<TabId>('controls');
-  const [settings, setSettings] = useSettings();
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [settings, updateSettings, error, isRateLimited] = useSettings();
 
   const updateSetting = React.useCallback(
     async (key: keyof Settings, value: boolean) => {
       try {
-        setIsLoading(true);
-        const newSettings = { ...settings, [key]: value };
-        await chrome.storage.sync.set(newSettings);
-        setSettings(newSettings);
+        await updateSettings({ [key]: value });
 
         const tab = await getActiveYouTubeTab();
         if (tab?.id) {
+          const newSettings = { ...settings, [key]: value };
           await updateContentScript(tab.id, newSettings);
         }
       } catch (error) {
         console.error('Failed to update setting:', error);
-      } finally {
-        setIsLoading(false);
       }
     },
-    [settings, setSettings]
+    [settings, updateSettings]
   );
 
   const activeControlsCount = React.useMemo(
@@ -57,9 +52,21 @@ const Popup: React.FC = () => {
       <Paper className="popup-container">
         <Header />
         <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {error && (
+          <Alert severity="warning" sx={{ mx: 3, mt: 2 }}>
+            {error.message}
+          </Alert>
+        )}
+        {isRateLimited && (
+          <Alert severity="info" sx={{ mx: 3, mt: 2 }}>
+            Saving changes... Please wait to avoid rate limits.
+          </Alert>
+        )}
+
         <Box sx={{ px: 3, flex: 1, overflowY: 'auto' }}>
           {activeTab === 'controls' && (
-            <ControlsTab settings={settings} updateSetting={updateSetting} isLoading={isLoading} />
+            <ControlsTab settings={settings} updateSetting={updateSetting} />
           )}
         </Box>
         <Footer activeControlsCount={activeControlsCount} />
@@ -68,13 +75,6 @@ const Popup: React.FC = () => {
   );
 };
 
-const root = document.getElementById('root');
-if (root) {
-  ReactDOM.createRoot(root).render(
-    <React.StrictMode>
-      <Popup />
-    </React.StrictMode>
-  );
-}
+ReactDOM.createRoot(document.getElementById('root')!).render(<Popup />);
 
 export default Popup;
