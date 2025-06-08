@@ -6,7 +6,7 @@ import {
   initializeExplore,
   initializeMoreFromYouTube,
 } from './homepage';
-// import { initializeAutoplay, initializeEndScreenCards, initializeEndScreenFeed } from './playback';
+import { initializeAutoplay, initializeEndScreenCards, initializeEndScreenFeed } from './playback';
 import {
   initializeChannel,
   initializeVideoInfo,
@@ -34,8 +34,8 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
   hideVideoInfo: initializeVideoInfo,
   hideButtonsBar: initializeButtonsBar,
   hideDescription: initializeDescription,
-  // hideEndScreenCards: initializeEndScreenCards,
-  // hideEndScreenFeed: initializeEndScreenFeed,
+  hideEndScreenCards: initializeEndScreenCards,
+  hideEndScreenFeed: initializeEndScreenFeed,
   hideTopHeader: initializeTopHeader,
   hideNotifications: initializeNotifications,
   hideSubscriptions: initializeSubscriptions,
@@ -43,7 +43,7 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
   hideChannel: initializeChannel,
   hidePlaylist: initializePlaylist,
   hideMoreFromYoutube: initializeMoreFromYouTube,
-  // disableAutoplay: initializeAutoplay,
+  disableAutoplay: initializeAutoplay,
 } as const;
 
 // Store cleanup functions
