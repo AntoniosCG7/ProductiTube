@@ -134,6 +134,21 @@ const FEATURES: Record<string, FeatureConfig> = {
       'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"]',
     ],
   },
+  'hide-end-screen-cards': {
+    cssClass: 'productitube-hide-end-screen-cards',
+    selectors: [
+      '.ytp-ce-element.ytp-ce-video.ytp-ce-element-show',
+      '.ytp-ce-element.ytp-ce-channel.ytp-ce-element-show',
+      '.ytp-ce-element.ytp-ce-playlist.ytp-ce-element-show',
+      '.ytp-ce-element.ytp-ce-link.ytp-ce-element-show',
+      '.ytp-ce-element.ytp-ce-web.ytp-ce-element-show',
+      '.ytp-ce-element:not(.ytp-ce-video)',
+    ],
+  },
+  'hide-end-screen-feed': {
+    cssClass: 'productitube-hide-end-screen-feed',
+    selectors: ['.ytp-endscreen-content'],
+  },
 };
 
 // ===============================
