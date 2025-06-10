@@ -12,7 +12,6 @@ export const updateContentScript = async (tabId: number, settings: Settings): Pr
       return;
     }
 
-    console.log('Settings updated successfully:', response);
   } catch (error) {
     console.error('Error updating settings:', error);
     throw new Error('Failed to update content script settings');
