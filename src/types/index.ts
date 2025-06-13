@@ -17,6 +17,7 @@ export interface Settings {
   hideRecommended: boolean;
   hideLiveChat: boolean;
   hidePlaylist: boolean;
+  blurThumbnails: boolean;
 }
 
 export interface FeatureCategory {
