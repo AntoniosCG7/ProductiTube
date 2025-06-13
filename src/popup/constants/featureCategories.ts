@@ -30,6 +30,7 @@ export const featureCategories: FeatureCategory[] = [
       { key: 'hideDescription', label: 'Hide Description' },
       { key: 'hideButtonsBar', label: 'Hide Buttons Bar' },
       { key: 'hideComments', label: 'Hide Comments' },
+      { key: 'blurThumbnails', label: 'Blur Thumbnails' },
     ],
   },
   {
