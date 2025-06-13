@@ -54,3 +54,13 @@ export const initializeComments = (enabled: boolean): (() => void) | void => {
   if (!enabled) return;
   return enableFeature('hide-comments');
 };
+
+/**
+ * Initialize thumbnail blurring features
+ * @param enabled - Whether the feature should be enabled
+ * @returns Cleanup function to remove observers
+ */
+export const initializeBlurThumbnails = (enabled: boolean): (() => void) | void => {
+  if (!enabled) return;
+  return enableFeature('blur-thumbnails');
+};

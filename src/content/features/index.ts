@@ -13,6 +13,7 @@ import {
   initializeDescription,
   initializeButtonsBar,
   initializeComments,
+  initializeBlurThumbnails,
 } from './content';
 import { initializeTopHeader, initializeNotifications } from './header';
 import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
@@ -44,6 +45,7 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
   hidePlaylist: initializePlaylist,
   hideMoreFromYoutube: initializeMoreFromYouTube,
   disableAutoplay: initializeAutoplay,
+  blurThumbnails: initializeBlurThumbnails,
 } as const;
 
 // Store cleanup functions
