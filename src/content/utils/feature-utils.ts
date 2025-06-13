@@ -10,6 +10,7 @@
 interface FeatureConfig {
   cssClass: string;
   selectors: string[];
+  effect?: 'hide' | 'blur';
 }
 
 const FEATURES: Record<string, FeatureConfig> = {
@@ -149,6 +150,34 @@ const FEATURES: Record<string, FeatureConfig> = {
     cssClass: 'productitube-hide-end-screen-feed',
     selectors: ['.ytp-endscreen-content'],
   },
+  'blur-thumbnails': {
+    cssClass: 'productitube-blur-thumbnails',
+    effect: 'blur',
+    selectors: [
+      'ytd-thumbnail img',
+      '.ytd-thumbnail img',
+      '#thumbnail img',
+      'ytd-rich-item-renderer img',
+      'ytd-video-renderer img',
+      'ytd-grid-video-renderer img',
+      'ytd-reel-item-renderer img',
+      'ytd-rich-shelf-renderer img',
+      'ytd-reel-shelf-renderer img',
+      'ytd-compact-video-renderer img',
+      'ytd-compact-movie-renderer img',
+      'ytd-compact-playlist-renderer img',
+      'ytd-video-renderer .ytd-thumbnail img',
+      'ytd-playlist-renderer .ytd-thumbnail img',
+      'ytd-browse[page-subtype="subscriptions"] ytd-thumbnail img',
+      'ytd-browse[page-subtype="trending"] ytd-thumbnail img',
+      '#secondary ytd-thumbnail img',
+      '.ytd-rich-grid-media img',
+      '.ytd-rich-grid-renderer img',
+      'yt-collection-thumbnail-view-model',
+      '.ytp-ce-element.ytp-ce-video.ytp-ce-element-show',
+      '.ytp-endscreen-content',
+    ],
+  },
 };
 
 // ===============================
@@ -166,9 +195,16 @@ function generateCSS(): string {
       .map((selector) => `.${config.cssClass} ${selector}`)
       .join(',\n  ');
 
-    rules.push(
-      `  /* ${featureName.replace('-', ' ').toUpperCase()} */\n  ${selectorList} {\n    display: none !important;\n  }`
-    );
+    const effect = config.effect || 'hide';
+    let cssRule: string;
+
+    if (effect === 'blur') {
+      cssRule = `  /* ${featureName.replace('-', ' ').toUpperCase()} */\n  ${selectorList} {\n    filter: blur(10px) !important;\n    transition: filter 0.2s ease !important;\n  }`;
+    } else {
+      cssRule = `  /* ${featureName.replace('-', ' ').toUpperCase()} */\n  ${selectorList} {\n    display: none !important;\n  }`;
+    }
+
+    rules.push(cssRule);
   }
 
   return `

@@ -24,6 +24,7 @@ const defaultSettings: Settings = {
   hideRecommended: false,
   hideLiveChat: false,
   hidePlaylist: false,
+  blurThumbnails: false,
 };
 
 /**
