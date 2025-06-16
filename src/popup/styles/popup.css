@@ -1,3 +1,9 @@
+@import 'tailwindcss';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .popup-container {
   width: 320px;
   height: 600px;
