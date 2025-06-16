@@ -164,6 +164,7 @@ const FEATURES: Record<string, FeatureConfig> = {
       '.ytp-autonav-endscreen-upnext-thumbnail',
       'ytd-browse[page-subtype="subscriptions"] ytd-thumbnail img',
       'ytd-browse[page-subtype="trending"] ytd-thumbnail img',
+      '#inline-preview-player > div.html5-video-container > video',
     ],
   },
 };
