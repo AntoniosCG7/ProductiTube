@@ -1,14 +1,8 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
-import './styles/Header.css';
 
 export const Header: React.FC = () => (
-  <Box className="header-container">
-    <Typography variant="h5" className="header-title">
-      ProductiTube
-    </Typography>
-    <Typography variant="body2" className="header-subtitle">
-      Your YouTube, Your Rules
-    </Typography>
-  </Box>
+  <div className="bg-[#f52f30] py-4 text-center text-white">
+    <h1 className="text-2xl font-bold tracking-tight">ProductiTube</h1>
+    <p className="text-lg opacity-80">Your YouTube, Your Rules</p>
+  </div>
 );

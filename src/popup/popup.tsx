@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ThemeProvider, CssBaseline, Box, Paper, Alert } from '@mui/material';
-import { createTheme } from '@mui/material/styles';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSettings } from './hooks/useSettings';
 import { updateContentScript, getActiveYouTubeTab } from './utils/settings';
 import { Settings } from '@/types';
@@ -10,15 +9,8 @@ import { Navigation } from './components/Navigation/Navigation';
 import { ControlsTab } from './components/ControlsTab/ControlsTab';
 import { Footer } from './components/Footer/Footer';
 import { TabId } from '@/types/popup';
+import { AlertTriangle, Info } from 'lucide-react';
 import './styles/popup.css';
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: { main: '#f52f30' },
-    background: { default: '#fff', paper: '#fff' },
-  },
-});
 
 const Popup: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState<TabId>('controls');
@@ -47,31 +39,36 @@ const Popup: React.FC = () => {
   );
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Paper className="popup-container">
-        <Header />
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+    <div className="w-96 h-[600px] overflow-hidden overflow-x-hidden flex flex-col">
+      <Header />
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {error && (
-          <Alert severity="warning" sx={{ mx: 3, mt: 2 }}>
-            {error.message}
-          </Alert>
-        )}
-        {isRateLimited && (
-          <Alert severity="info" sx={{ mx: 3, mt: 2 }}>
-            Saving changes... Please wait to avoid rate limits.
-          </Alert>
-        )}
+      {error && (
+        <Alert variant="destructive" className="mx-3 mt-2">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error.message}</AlertDescription>
+        </Alert>
+      )}
+      {isRateLimited && (
+        <Alert className="mx-3 mt-2">
+          <Info className="h-4 w-4" />
+          <AlertDescription>Saving changes... Please wait to avoid rate limits.</AlertDescription>
+        </Alert>
+      )}
 
-        <Box sx={{ px: 3, flex: 1, overflowY: 'auto' }}>
-          {activeTab === 'controls' && (
-            <ControlsTab settings={settings} updateSetting={updateSetting} />
-          )}
-        </Box>
-        <Footer activeControlsCount={activeControlsCount} />
-      </Paper>
-    </ThemeProvider>
+      <div className="px-4 flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
+        {activeTab === 'controls' && (
+          <ControlsTab settings={settings} updateSetting={updateSetting} />
+        )}
+        {activeTab === 'limits' && (
+          <div className="p-4 text-center text-muted-foreground">Limits tab coming soon...</div>
+        )}
+        {activeTab === 'stats' && (
+          <div className="p-4 text-center text-muted-foreground">Stats tab coming soon...</div>
+        )}
+      </div>
+      <Footer activeControlsCount={activeControlsCount} />
+    </div>
   );
 };
 

@@ -1,23 +1,26 @@
 import React from 'react';
-import { Box, Button, Typography } from '@mui/material';
-import { Settings as SettingsIcon, Help as HelpIcon } from '@mui/icons-material';
+import { Button } from '@/components/ui/button';
+import { Settings, HelpCircle } from 'lucide-react';
 import { FooterProps } from '@/types/popup';
-import './styles/Footer.css';
 
 export const Footer: React.FC<FooterProps> = ({ activeControlsCount }) => (
-  <Box className="footer-container">
-    <Typography variant="body2" className="footer-text">
-      {activeControlsCount} controls active
-    </Typography>
-    <Box sx={{ display: 'flex', gap: 1 }}>
+  <div className="bg-gray-200 px-4 py-3 flex justify-between items-center border-t border-gray-300">
+    <p className="text-sm text-gray-700 font-medium">{activeControlsCount} controls active</p>
+    <div className="flex gap-1">
       {[
-        { icon: <SettingsIcon />, label: 'Settings' },
-        { icon: <HelpIcon />, label: 'Help' },
-      ].map(({ icon, label }) => (
-        <Button key={label} startIcon={icon} size="small" color="inherit" className="footer-button">
+        { icon: Settings, label: 'Settings' },
+        { icon: HelpCircle, label: 'Help' },
+      ].map(({ icon: Icon, label }) => (
+        <Button
+          key={label}
+          variant="ghost"
+          size="sm"
+          className="text-sm hover:bg-gray-300 cursor-pointer"
+        >
+          <Icon className="h-4 w-4" />
           {label}
         </Button>
       ))}
-    </Box>
-  </Box>
+    </div>
+  </div>
 );
