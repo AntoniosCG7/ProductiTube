@@ -20,6 +20,29 @@ export interface Settings {
   blurThumbnails: boolean;
 }
 
+export interface VideoCategory {
+  id: string;
+  name: string;
+  color: string;
+  dailyLimitCount: number;
+  dailyTimeLimit?: number;
+  videosWatchedToday: number;
+  timeWatchedToday?: number;
+  isActive: boolean;
+}
+
+export interface LimitsSettings {
+  isLimitsEnabled: boolean;
+  categories: VideoCategory[];
+  activeMode?: 'video-count' | 'time-category' | 'time-total';
+  totalDailyTimeLimit?: number;
+}
+
+export interface LimitsTabProps {
+  limitsSettings: LimitsSettings;
+  updateLimitsSettings: (updates: Partial<LimitsSettings>) => void;
+}
+
 export interface FeatureCategory {
   title: string;
   description: string;
