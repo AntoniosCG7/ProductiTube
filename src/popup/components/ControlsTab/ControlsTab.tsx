@@ -12,23 +12,26 @@ const CategorySection: React.FC<{
   category: (typeof featureCategories)[0];
   settings: Settings;
   updateSetting: ControlsTabProps['updateSetting'];
-}> = ({ category, settings, updateSetting }) => (
-  <div className="mb-6">
-    <div className="flex items-center justify-between mb-4 px-1">
-      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-        {category.title}
+  isLast: boolean;
+}> = ({ category, settings, updateSetting, isLast }) => (
+  <div className={isLast ? 'mb-0' : 'mb-6'}>
+    <div className="flex items-center justify-between mb-3 px-1">
+      <div className="flex items-center gap-1">
+        <h3 className="text-base font-bold text-gray-900">{category.title}</h3>
         <SimpleTooltip content={category.description}>
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600 mr-1 mt-2"
+            className="p-0 text-gray-400 hover:text-gray-600"
+            style={{ height: '16px', width: '16px', marginTop: '4px' }}
           >
-            <Info className="h-4 w-4" />
+            <Info style={{ height: '12px', width: '12px' }} />
           </Button>
         </SimpleTooltip>
-      </h3>
+      </div>
     </div>
-    <div className="space-y-3">
+
+    <div className="space-y-2">
       {category.features.map((feature) => (
         <FeatureToggle
           key={feature.key}
@@ -42,11 +45,16 @@ const CategorySection: React.FC<{
 );
 
 export const ControlsTab: React.FC<ControlsTabProps> = ({ settings, updateSetting }) => (
-  <div className="py-4">
+  <div className="py-6">
     {featureCategories.map((category, index) => (
       <React.Fragment key={category.title}>
-        <CategorySection category={category} settings={settings} updateSetting={updateSetting} />
-        {index < featureCategories.length - 1 && <Separator className="my-8" />}
+        <CategorySection
+          category={category}
+          settings={settings}
+          updateSetting={updateSetting}
+          isLast={index === featureCategories.length - 1}
+        />
+        {index < featureCategories.length - 1 && <Separator className="my-6 opacity-30" />}
       </React.Fragment>
     ))}
   </div>
