@@ -146,10 +146,25 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     if (enabled) {
       setActiveMode(mode);
       setIsTotalLimitSaved(false);
-      updateLimitsSettings({
-        activeMode: mode,
-        isLimitsEnabled: true,
-      });
+
+      if (mode === 'video-count' || mode === 'time-category') {
+        updateLimitsSettings({
+          activeMode: mode,
+          isLimitsEnabled: true,
+          categories: {
+            ...limitsSettings.categories,
+            [mode]: [], 
+          },
+        });
+      } else if (mode === 'time-total') {
+        setTotalTimeLimit(60);
+        setTotalTimeWatched(0);
+        updateLimitsSettings({
+          activeMode: mode,
+          isLimitsEnabled: true,
+          totalDailyTimeLimit: 60,
+        });
+      }
     } else {
       updateLimitsSettings({ isLimitsEnabled: false });
     }
@@ -1224,11 +1239,58 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                     {modeConfirmation.mode === 'time-total' && 'Total Time-Based Limit'}
                   </span>{' '}
                   mode?
-                  {limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation.mode && (
-                    <span className="block mt-2 text-amber-600 font-medium">
-                      This will switch from your current mode and may affect your existing limits.
-                    </span>
-                  )}
+                  <span className="block mt-2 font-medium">
+                    {(() => {
+                      const currentModeHasCategories =
+                        modeConfirmation.mode === 'video-count' ||
+                        modeConfirmation.mode === 'time-category'
+                          ? (limitsSettings.categories[modeConfirmation.mode]?.length || 0) > 0
+                          : false;
+                      const isTotal = modeConfirmation.mode === 'time-total';
+                      const hasTotalLimit =
+                        limitsSettings.totalDailyTimeLimit &&
+                        limitsSettings.totalDailyTimeLimit !== 60;
+
+                      if (limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation.mode) {
+                        return (
+                          <span className="text-amber-600">
+                            This will switch from your current mode and reset all limits for the new
+                            mode.
+                          </span>
+                        );
+                      } else if (
+                        !limitsSettings.isLimitsEnabled &&
+                        (currentModeHasCategories || (isTotal && hasTotalLimit))
+                      ) {
+                        return (
+                          <span className="text-amber-600">
+                            This will reset all previous limits and give you a fresh start with this
+                            mode.
+                          </span>
+                        );
+                      } else {
+                        if (modeConfirmation.mode === 'video-count') {
+                          return (
+                            <span className="text-blue-600">
+                              You can create categories and set daily video limits for each one.
+                            </span>
+                          );
+                        } else if (modeConfirmation.mode === 'time-category') {
+                          return (
+                            <span className="text-blue-600">
+                              You can create categories and set daily time limits for each one.
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="text-blue-600">
+                              You can set a single daily time limit for all YouTube videos.
+                            </span>
+                          );
+                        }
+                      }
+                    })()}
+                  </span>
                 </>
               ) : (
                 <>
