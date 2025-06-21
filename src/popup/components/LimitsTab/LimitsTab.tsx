@@ -58,6 +58,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const [totalTimeWatched, setTotalTimeWatched] = useState(0);
   const [isTotalLimitSaved, setIsTotalLimitSaved] = useState(false);
   const [selectedPresets, setSelectedPresets] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<{
+    name?: string;
+    dailyLimitCount?: string;
+    dailyTimeLimit?: string;
+  }>({});
 
   const getCurrentModeCategories = (): VideoCategory[] => {
     if (activeMode === 'video-count' || activeMode === 'time-category') {
@@ -85,6 +90,41 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     return `${mins}m`;
   };
 
+  const validateForm = () => {
+    const errors: { name?: string; dailyLimitCount?: string; dailyTimeLimit?: string } = {};
+
+    if (!newCategory.name.trim()) {
+      errors.name = 'Category name is required';
+    } else if (newCategory.name.trim().length < 2) {
+      errors.name = 'Category name must be at least 2 characters';
+    } else if (newCategory.name.trim().length > 30) {
+      errors.name = 'Category name must be less than 30 characters';
+    }
+
+    if (activeMode === 'video-count') {
+      if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
+        errors.dailyLimitCount = 'Daily limit must be at least 1 video';
+      } else if (newCategory.dailyLimitCount > 100) {
+        errors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
+      }
+    }
+
+    if (activeMode === 'time-category') {
+      if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
+        errors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
+      } else if (newCategory.dailyTimeLimit > 480) {
+        errors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const clearValidationErrors = () => {
+    setValidationErrors({});
+  };
+
   const handleModeToggle = (mode: LimitMode, enabled: boolean) => {
     if (enabled) {
       setActiveMode(mode);
@@ -99,6 +139,40 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleAddCategory = () => {
+    if (newCategory.name.trim() && !validateForm()) {
+      return;
+    }
+
+    if (selectedPresets.length > 0 && newCategory.name.trim() === '') {
+      const tempErrors: { dailyLimitCount?: string; dailyTimeLimit?: string } = {};
+
+      if (activeMode === 'video-count') {
+        if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
+          tempErrors.dailyLimitCount = 'Daily limit must be at least 1 video';
+        } else if (newCategory.dailyLimitCount > 100) {
+          tempErrors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
+        }
+      }
+
+      if (activeMode === 'time-category') {
+        if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
+          tempErrors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
+        } else if (newCategory.dailyTimeLimit > 480) {
+          tempErrors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
+        }
+      }
+
+      if (Object.keys(tempErrors).length > 0) {
+        setValidationErrors(tempErrors);
+        return;
+      }
+    }
+
+    if (!newCategory.name.trim() && selectedPresets.length === 0) {
+      setValidationErrors({ name: 'Please enter a category name or select preset categories' });
+      return;
+    }
+
     const categoriesToAdd: VideoCategory[] = [];
 
     if (newCategory.name.trim()) {
@@ -132,8 +206,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       }
     });
 
-    if (categoriesToAdd.length === 0) return;
-
     const currentModeCategories = getCurrentModeCategories();
 
     updateLimitsSettings({
@@ -150,6 +222,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       dailyTimeLimit: 60,
     });
     setSelectedPresets([]);
+    clearValidationErrors();
     setIsAddDialogOpen(false);
   };
 
@@ -164,7 +237,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleUpdateCategory = () => {
-    if (!editingCategory || !newCategory.name.trim()) return;
+    if (!editingCategory) return;
+
+    if (!validateForm()) {
+      return;
+    }
 
     const currentModeCategories = getCurrentModeCategories();
     const updatedCategories = currentModeCategories.map((cat: VideoCategory) =>
@@ -192,6 +269,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       dailyLimitCount: 5,
       dailyTimeLimit: 60,
     });
+    clearValidationErrors();
   };
 
   const handleDeleteCategory = (categoryId: string) => {
@@ -240,6 +318,21 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     setSelectedPresets((prev) =>
       prev.includes(presetName) ? prev.filter((name) => name !== presetName) : [...prev, presetName]
     );
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsAddDialogOpen(open);
+    if (!open) {
+      clearValidationErrors();
+      setSelectedPresets([]);
+    }
+  };
+
+  const handleEditDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setEditingCategory(null);
+      clearValidationErrors();
+    }
   };
 
   const currentModeCategories = getCurrentModeCategories();
@@ -404,7 +497,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         </CardTitle>
                         <p className="text-xs text-gray-600 mt-0.5">Manage category limits</p>
                       </div>
-                      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                      <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
                         <DialogTrigger asChild>
                           <Button
                             size="sm"
@@ -429,12 +522,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                             <Input
                               id="category-name"
                               value={newCategory.name}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                setNewCategory({ ...newCategory, name: e.target.value })
-                              }
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                setNewCategory({ ...newCategory, name: e.target.value });
+                                if (validationErrors.name) {
+                                  setValidationErrors({ ...validationErrors, name: undefined });
+                                }
+                              }}
                               placeholder="e.g., Education, Entertainment"
-                              className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                              className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                                validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
+                              }`}
                             />
+                            {validationErrors.name && (
+                              <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
+                            )}
                             <div>
                               <Label htmlFor="daily-limit" className="mb-1 text-xs">
                                 Daily Video Limit
@@ -445,17 +546,33 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 min="1"
                                 max="100"
                                 value={newCategory.dailyLimitCount}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                   setNewCategory({
                                     ...newCategory,
                                     dailyLimitCount: Number.parseInt(e.target.value) || 5,
-                                  })
-                                }
-                                className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                                  });
+                                  if (validationErrors.dailyLimitCount) {
+                                    setValidationErrors({
+                                      ...validationErrors,
+                                      dailyLimitCount: undefined,
+                                    });
+                                  }
+                                }}
+                                className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                                  validationErrors.dailyLimitCount
+                                    ? 'border-red-500 ring-1 ring-red-500'
+                                    : ''
+                                }`}
                               />
-                              <p className="text-[10px] text-gray-500 mt-1">
-                                Maximum videos per day
-                              </p>
+                              {validationErrors.dailyLimitCount ? (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {validationErrors.dailyLimitCount}
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                  Maximum videos per day
+                                </p>
+                              )}
                             </div>
                             <ColorPicker
                               label="Color"
@@ -510,10 +627,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                               </Button>
                               <Button
                                 variant="outline"
-                                onClick={() => {
-                                  setIsAddDialogOpen(false);
-                                  setSelectedPresets([]);
-                                }}
+                                onClick={() => handleDialogOpenChange(false)}
                                 className="h-8 text-xs"
                               >
                                 Cancel
@@ -696,7 +810,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         <p className="text-xs text-gray-600 mt-0.5">Set time limits per category</p>
                       </div>
                     </div>
-                    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                    <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
                       <DialogTrigger asChild>
                         <Button
                           size="sm"
@@ -721,12 +835,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           <Input
                             id="category-name"
                             value={newCategory.name}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                              setNewCategory({ ...newCategory, name: e.target.value })
-                            }
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                              setNewCategory({ ...newCategory, name: e.target.value });
+                              if (validationErrors.name) {
+                                setValidationErrors({ ...validationErrors, name: undefined });
+                              }
+                            }}
                             placeholder="e.g., Education, Entertainment"
-                            className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                            className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                              validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
+                            }`}
                           />
+                          {validationErrors.name && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
+                          )}
                           <div>
                             <Label htmlFor="daily-time-limit" className="mb-1 text-xs">
                               Daily Time Limit (minutes)
@@ -737,17 +859,34 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                               min="5"
                               max="480"
                               value={newCategory.dailyTimeLimit}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 setNewCategory({
                                   ...newCategory,
                                   dailyTimeLimit: Number.parseInt(e.target.value) || 60,
-                                })
-                              }
-                              className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                                });
+                                if (validationErrors.dailyTimeLimit) {
+                                  setValidationErrors({
+                                    ...validationErrors,
+                                    dailyTimeLimit: undefined,
+                                  });
+                                }
+                              }}
+                              className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                                validationErrors.dailyTimeLimit
+                                  ? 'border-red-500 ring-1 ring-red-500'
+                                  : ''
+                              }`}
                             />
-                            <p className="text-[10px] text-gray-500 mt-1">
-                              Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)})
-                            </p>
+                            {validationErrors.dailyTimeLimit ? (
+                              <p className="text-xs text-red-500 mt-1">
+                                {validationErrors.dailyTimeLimit}
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-gray-500 mt-1">
+                                Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)}
+                                )
+                              </p>
+                            )}
                           </div>
                           <ColorPicker
                             label="Color"
@@ -800,10 +939,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                             </Button>
                             <Button
                               variant="outline"
-                              onClick={() => {
-                                setIsAddDialogOpen(false);
-                                setSelectedPresets([]);
-                              }}
+                              onClick={() => handleDialogOpenChange(false)}
                               className="h-8 text-xs"
                             >
                               Cancel
@@ -1045,10 +1181,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       )}
 
       {/* Edit Category Dialog */}
-      <Dialog
-        open={!!editingCategory}
-        onOpenChange={(open: boolean) => !open && setEditingCategory(null)}
-      >
+      <Dialog open={!!editingCategory} onOpenChange={handleEditDialogOpenChange}>
         <DialogContent className="max-h-[80vh] overflow-y-auto rounded-none">
           <DialogHeader>
             <DialogTitle className="text-base">Edit Category</DialogTitle>
@@ -1064,11 +1197,19 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               <Input
                 id="edit-category-name"
                 value={newCategory.name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setNewCategory({ ...newCategory, name: e.target.value })
-                }
-                className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setNewCategory({ ...newCategory, name: e.target.value });
+                  if (validationErrors.name) {
+                    setValidationErrors({ ...validationErrors, name: undefined });
+                  }
+                }}
+                className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                  validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
+                }`}
               />
+              {validationErrors.name && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
+              )}
             </div>
 
             {activeMode === 'video-count' && (
@@ -1082,15 +1223,24 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   min="1"
                   max="100"
                   value={newCategory.dailyLimitCount}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setNewCategory({
                       ...newCategory,
                       dailyLimitCount: Number.parseInt(e.target.value) || 5,
-                    })
-                  }
-                  className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                    });
+                    if (validationErrors.dailyLimitCount) {
+                      setValidationErrors({ ...validationErrors, dailyLimitCount: undefined });
+                    }
+                  }}
+                  className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                    validationErrors.dailyLimitCount ? 'border-red-500 ring-1 ring-red-500' : ''
+                  }`}
                 />
-                <p className="text-[10px] text-gray-500 mt-1">Maximum number of videos per day</p>
+                {validationErrors.dailyLimitCount ? (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.dailyLimitCount}</p>
+                ) : (
+                  <p className="text-[10px] text-gray-500 mt-1">Maximum number of videos per day</p>
+                )}
               </div>
             )}
 
@@ -1105,17 +1255,26 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   min="5"
                   max="480"
                   value={newCategory.dailyTimeLimit}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setNewCategory({
                       ...newCategory,
                       dailyTimeLimit: Number.parseInt(e.target.value) || 60,
-                    })
-                  }
-                  className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                    });
+                    if (validationErrors.dailyTimeLimit) {
+                      setValidationErrors({ ...validationErrors, dailyTimeLimit: undefined });
+                    }
+                  }}
+                  className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                    validationErrors.dailyTimeLimit ? 'border-red-500 ring-1 ring-red-500' : ''
+                  }`}
                 />
-                <p className="text-[10px] text-gray-500 mt-1">
-                  Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)})
-                </p>
+                {validationErrors.dailyTimeLimit ? (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.dailyTimeLimit}</p>
+                ) : (
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)})
+                  </p>
+                )}
               </div>
             )}
 
@@ -1133,7 +1292,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setEditingCategory(null)}
+                onClick={() => handleEditDialogOpenChange(false)}
                 className="h-8 text-xs"
               >
                 Cancel
