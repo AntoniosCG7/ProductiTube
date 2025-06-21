@@ -16,13 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { Progress } from '@/components/ui/progress';
 import {
   Plus,
@@ -46,17 +40,6 @@ const PRESET_CATEGORIES = [
   { name: 'Sports', color: '#f97316' },
 ];
 
-const COLOR_OPTIONS = [
-  '#10b981',
-  '#f59e0b',
-  '#8b5cf6',
-  '#ef4444',
-  '#06b6d4',
-  '#f97316',
-  '#ec4899',
-  '#6366f1',
-];
-
 type LimitMode = 'video-count' | 'time-category' | 'time-total';
 
 export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimitsSettings }) => {
@@ -67,7 +50,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const [editingCategory, setEditingCategory] = useState<VideoCategory | null>(null);
   const [newCategory, setNewCategory] = useState({
     name: '',
-    color: COLOR_OPTIONS[0],
+    color: '#10b981',
     dailyLimitCount: 5,
     dailyTimeLimit: 60,
   });
@@ -162,7 +145,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
     setNewCategory({
       name: '',
-      color: COLOR_OPTIONS[0],
+      color: '#10b981',
       dailyLimitCount: 5,
       dailyTimeLimit: 60,
     });
@@ -205,7 +188,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     setEditingCategory(null);
     setNewCategory({
       name: '',
-      color: COLOR_OPTIONS[0],
+      color: '#10b981',
       dailyLimitCount: 5,
       dailyTimeLimit: 60,
     });
@@ -432,7 +415,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           </Button>
                         </DialogTrigger>
 
-                        <DialogContent>
+                        <DialogContent className="max-h-[80vh] overflow-y-auto rounded-none">
                           <DialogHeader>
                             <DialogTitle className="text-base">Add Category</DialogTitle>
                             <DialogDescription className="text-xs">
@@ -474,34 +457,13 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 Maximum videos per day
                               </p>
                             </div>
-                            <div>
-                              <Label htmlFor="category-color" className="mb-1 text-xs">
-                                Color
-                              </Label>
-                              <Select
-                                value={newCategory.color}
-                                onValueChange={(color: string) =>
-                                  setNewCategory({ ...newCategory, color })
-                                }
-                              >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {COLOR_OPTIONS.map((color) => (
-                                    <SelectItem key={color} value={color}>
-                                      <div className="flex items-center gap-2">
-                                        <div
-                                          className="w-3 h-3 rounded-full"
-                                          style={{ backgroundColor: color }}
-                                        />
-                                        {color}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                            <ColorPicker
+                              label="Color"
+                              value={newCategory.color}
+                              onChange={(color: string) =>
+                                setNewCategory({ ...newCategory, color })
+                              }
+                            />
                             <div className="space-y-2">
                               <Label className="text-xs">Quick Add</Label>
                               <div className="flex flex-wrap gap-1">
@@ -745,7 +707,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         </Button>
                       </DialogTrigger>
 
-                      <DialogContent>
+                      <DialogContent className="max-h-[80vh] overflow-y-auto rounded-none">
                         <DialogHeader>
                           <DialogTitle className="text-base">Add New Time Category</DialogTitle>
                           <DialogDescription className="text-xs">
@@ -787,34 +749,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                               Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)})
                             </p>
                           </div>
-                          <div>
-                            <Label htmlFor="category-color" className="mb-1 text-sm">
-                              Color
-                            </Label>
-                            <Select
-                              value={newCategory.color}
-                              onValueChange={(color: string) =>
-                                setNewCategory({ ...newCategory, color })
-                              }
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {COLOR_OPTIONS.map((color) => (
-                                  <SelectItem key={color} value={color}>
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className="w-3 h-3 rounded-full"
-                                        style={{ backgroundColor: color }}
-                                      />
-                                      {color}
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          <ColorPicker
+                            label="Color"
+                            value={newCategory.color}
+                            onChange={(color: string) => setNewCategory({ ...newCategory, color })}
+                          />
                           <div className="space-y-2">
                             <Label className="text-xs">Quick Add</Label>
                             <div className="flex flex-wrap gap-1">
@@ -1110,7 +1049,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         open={!!editingCategory}
         onOpenChange={(open: boolean) => !open && setEditingCategory(null)}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto rounded-none">
           <DialogHeader>
             <DialogTitle className="text-base">Edit Category</DialogTitle>
             <DialogDescription className="text-xs">
@@ -1180,29 +1119,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               </div>
             )}
 
-            <div>
-              <Label htmlFor="edit-category-color" className="mb-1 text-xs">
-                Color
-              </Label>
-              <Select
-                value={newCategory.color}
-                onValueChange={(color: string) => setNewCategory({ ...newCategory, color })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {COLOR_OPTIONS.map((color) => (
-                    <SelectItem key={color} value={color}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                        {color}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <ColorPicker
+              label="Color"
+              value={newCategory.color}
+              onChange={(color: string) => setNewCategory({ ...newCategory, color })}
+            />
             <div className="flex gap-2">
               <Button
                 onClick={handleUpdateCategory}
