@@ -63,6 +63,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     dailyLimitCount?: string;
     dailyTimeLimit?: string;
   }>({});
+  const [modeConfirmation, setModeConfirmation] = useState<{
+    mode: LimitMode;
+    enabled: boolean;
+    isOpen: boolean;
+  } | null>(null);
 
   const getCurrentModeCategories = (): VideoCategory[] => {
     if (activeMode === 'video-count' || activeMode === 'time-category') {
@@ -126,6 +131,18 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleModeToggle = (mode: LimitMode, enabled: boolean) => {
+    setModeConfirmation({
+      mode,
+      enabled,
+      isOpen: true,
+    });
+  };
+
+  const confirmModeChange = () => {
+    if (!modeConfirmation) return;
+
+    const { mode, enabled } = modeConfirmation;
+
     if (enabled) {
       setActiveMode(mode);
       setIsTotalLimitSaved(false);
@@ -136,6 +153,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     } else {
       updateLimitsSettings({ isLimitsEnabled: false });
     }
+
+    setModeConfirmation(null);
+  };
+
+  const cancelModeChange = () => {
+    setModeConfirmation(null);
   };
 
   const handleAddCategory = () => {
@@ -508,7 +531,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           </Button>
                         </DialogTrigger>
 
-                        <DialogContent className="max-h-[80vh] overflow-y-auto rounded-none">
+                        <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
                           <DialogHeader>
                             <DialogTitle className="text-base">Add Category</DialogTitle>
                             <DialogDescription className="text-xs">
@@ -821,7 +844,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         </Button>
                       </DialogTrigger>
 
-                      <DialogContent className="max-h-[80vh] overflow-y-auto rounded-none">
+                      <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
                         <DialogHeader>
                           <DialogTitle className="text-base">Add New Time Category</DialogTitle>
                           <DialogDescription className="text-xs">
@@ -1180,9 +1203,60 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         </>
       )}
 
+      {/* Mode Confirmation Dialog */}
+      <Dialog
+        open={modeConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelModeChange()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              Confirm Mode Change
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {modeConfirmation?.enabled ? (
+                <>
+                  Are you sure you want to <strong>enable</strong>{' '}
+                  <span className="font-medium">
+                    {modeConfirmation.mode === 'video-count' && 'Video Count by Category'}
+                    {modeConfirmation.mode === 'time-category' && 'Time Limit by Category'}
+                    {modeConfirmation.mode === 'time-total' && 'Total Time-Based Limit'}
+                  </span>{' '}
+                  mode?
+                  {limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation.mode && (
+                    <span className="block mt-2 text-amber-600 font-medium">
+                      This will switch from your current mode and may affect your existing limits.
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  Are you sure you want to <strong>disable</strong> all video limits?
+                  <span className="block mt-2 text-amber-600 font-medium">
+                    This will turn off all daily restrictions.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmModeChange}
+              className="flex-1 bg-red-500 hover:bg-red-600 h-9 text-sm"
+            >
+              {modeConfirmation?.enabled ? 'Enable Mode' : 'Disable Limits'}
+            </Button>
+            <Button variant="outline" onClick={cancelModeChange} className="h-9 text-sm">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Category Dialog */}
       <Dialog open={!!editingCategory} onOpenChange={handleEditDialogOpenChange}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto rounded-none">
+        <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
           <DialogHeader>
             <DialogTitle className="text-base">Edit Category</DialogTitle>
             <DialogDescription className="text-xs">
