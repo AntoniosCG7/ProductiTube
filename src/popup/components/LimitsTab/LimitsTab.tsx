@@ -68,6 +68,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     enabled: boolean;
     isOpen: boolean;
   } | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    categoryId: string;
+    categoryName: string;
+    isOpen: boolean;
+  } | null>(null);
 
   const getCurrentModeCategories = (): VideoCategory[] => {
     if (activeMode === 'video-count' || activeMode === 'time-category') {
@@ -153,7 +158,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
           isLimitsEnabled: true,
           categories: {
             ...limitsSettings.categories,
-            [mode]: [], 
+            [mode]: [],
           },
         });
       } else if (mode === 'time-total') {
@@ -174,6 +179,34 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const cancelModeChange = () => {
     setModeConfirmation(null);
+  };
+
+  const handleDeleteClick = (categoryId: string, categoryName: string) => {
+    setDeleteConfirmation({
+      categoryId,
+      categoryName,
+      isOpen: true,
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirmation) return;
+
+    const currentModeCategories = getCurrentModeCategories();
+    const updatedCategories = currentModeCategories.filter(
+      (cat: VideoCategory) => cat.id !== deleteConfirmation.categoryId
+    );
+    updateLimitsSettings({
+      categories: {
+        ...limitsSettings.categories,
+        [activeMode]: updatedCategories,
+      },
+    });
+    setDeleteConfirmation(null);
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation(null);
   };
 
   const handleAddCategory = () => {
@@ -308,19 +341,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       dailyTimeLimit: 60,
     });
     clearValidationErrors();
-  };
-
-  const handleDeleteCategory = (categoryId: string) => {
-    const currentModeCategories = getCurrentModeCategories();
-    const updatedCategories = currentModeCategories.filter(
-      (cat: VideoCategory) => cat.id !== categoryId
-    );
-    updateLimitsSettings({
-      categories: {
-        ...limitsSettings.categories,
-        [activeMode]: updatedCategories,
-      },
-    });
   };
 
   const handleToggleCategory = (categoryId: string) => {
@@ -732,7 +752,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDeleteCategory(category.id)}
+                                  onClick={() => handleDeleteClick(category.id, category.name)}
                                   className="h-6 w-6 p-0"
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -1041,7 +1061,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDeleteCategory(category.id)}
+                                  onClick={() => handleDeleteClick(category.id, category.name)}
                                   className="h-6 w-6 p-0"
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -1434,6 +1454,39 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 Cancel
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Category Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelDelete()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              Delete Category
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              Are you sure you want to delete the category{' '}
+              <strong>&quot;{deleteConfirmation?.categoryName}&quot;</strong>?
+              <span className="block mt-2 text-red-600 font-medium">
+                This action cannot be undone. All progress for this category will be lost.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmDelete}
+              className="flex-1 bg-red-500 hover:bg-red-600 h-9 text-sm"
+            >
+              Delete Category
+            </Button>
+            <Button variant="outline" onClick={cancelDelete} className="h-9 text-sm">
+              Cancel
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
