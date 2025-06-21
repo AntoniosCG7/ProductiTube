@@ -33,7 +33,10 @@ export interface VideoCategory {
 
 export interface LimitsSettings {
   isLimitsEnabled: boolean;
-  categories: VideoCategory[];
+  categories: {
+    'video-count': VideoCategory[];
+    'time-category': VideoCategory[];
+  };
   activeMode?: 'video-count' | 'time-category' | 'time-total';
   totalDailyTimeLimit?: number;
 }
