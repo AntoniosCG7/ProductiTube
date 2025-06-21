@@ -1,4 +1,5 @@
 const SETTINGS_STORAGE_KEY = 'youtube_settings';
+const LIMITS_STORAGE_KEY = 'youtube_limits_settings';
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.sync.set({
@@ -23,11 +24,19 @@ chrome.runtime.onInstalled.addListener(() => {
       hidePlaylist: false,
     },
   });
+
+  chrome.storage.sync.set({
+    [LIMITS_STORAGE_KEY]: {
+      isLimitsEnabled: false,
+      showCategoryPrompt: false,
+      blockWhenExceeded: false,
+      categories: [],
+    },
+  });
 });
 
 // Listen for messages from content script or popup
 chrome.runtime.onMessage.addListener((_message, _sender, sendResponse) => {
-  // Handle messages here
   sendResponse({ received: true });
 });
 
