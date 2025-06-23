@@ -73,6 +73,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     categoryName: string;
     isOpen: boolean;
   } | null>(null);
+  const [categoryToggleConfirmation, setCategoryToggleConfirmation] = useState<{
+    categoryId: string;
+    categoryName: string;
+    currentState: boolean;
+    isOpen: boolean;
+  } | null>(null);
 
   const getCurrentModeCategories = (): VideoCategory[] => {
     if (activeMode === 'video-count' || activeMode === 'time-category') {
@@ -207,6 +213,27 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const cancelDelete = () => {
     setDeleteConfirmation(null);
+  };
+
+  const confirmCategoryToggle = () => {
+    if (!categoryToggleConfirmation) return;
+
+    const currentModeCategories = getCurrentModeCategories();
+    const updatedCategories = currentModeCategories.map((cat: VideoCategory) =>
+      cat.id === categoryToggleConfirmation.categoryId ? { ...cat, isActive: !cat.isActive } : cat
+    );
+    updateLimitsSettings({
+      categories: {
+        ...limitsSettings.categories,
+        [activeMode]: updatedCategories,
+      },
+    });
+
+    setCategoryToggleConfirmation(null);
+  };
+
+  const cancelCategoryToggle = () => {
+    setCategoryToggleConfirmation(null);
   };
 
   const handleAddCategory = () => {
@@ -345,15 +372,28 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const handleToggleCategory = (categoryId: string) => {
     const currentModeCategories = getCurrentModeCategories();
-    const updatedCategories = currentModeCategories.map((cat: VideoCategory) =>
-      cat.id === categoryId ? { ...cat, isActive: !cat.isActive } : cat
-    );
-    updateLimitsSettings({
-      categories: {
-        ...limitsSettings.categories,
-        [activeMode]: updatedCategories,
-      },
-    });
+    const category = currentModeCategories.find((cat: VideoCategory) => cat.id === categoryId);
+
+    if (!category) return;
+
+    if (category.isActive && (activeMode === 'video-count' || activeMode === 'time-category')) {
+      setCategoryToggleConfirmation({
+        categoryId,
+        categoryName: category.name,
+        currentState: category.isActive,
+        isOpen: true,
+      });
+    } else {
+      const updatedCategories = currentModeCategories.map((cat: VideoCategory) =>
+        cat.id === categoryId ? { ...cat, isActive: !cat.isActive } : cat
+      );
+      updateLimitsSettings({
+        categories: {
+          ...limitsSettings.categories,
+          [activeMode]: updatedCategories,
+        },
+      });
+    }
   };
 
   const handleResetAllLimits = async () => {
@@ -392,21 +432,22 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const currentModeCategories = getCurrentModeCategories();
+  const activeCategories = currentModeCategories.filter((cat: VideoCategory) => cat.isActive);
 
-  const totalVideosWatched = currentModeCategories.reduce(
+  const totalVideosWatched = activeCategories.reduce(
     (sum: number, cat: VideoCategory) => sum + cat.videosWatchedToday,
     0
   );
-  const totalVideoLimit = currentModeCategories.reduce(
+  const totalVideoLimit = activeCategories.reduce(
     (sum: number, cat: VideoCategory) => sum + cat.dailyLimitCount,
     0
   );
 
-  const totalCategoryTimeWatched = currentModeCategories.reduce(
+  const totalCategoryTimeWatched = activeCategories.reduce(
     (sum: number, cat: VideoCategory) => sum + (cat.timeWatchedToday || 0),
     0
   );
-  const totalCategoryTimeLimit = currentModeCategories.reduce(
+  const totalCategoryTimeLimit = activeCategories.reduce(
     (sum: number, cat: VideoCategory) => sum + (cat.dailyTimeLimit || 60),
     0
   );
@@ -1483,6 +1524,40 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               Delete Category
             </Button>
             <Button variant="outline" onClick={cancelDelete} className="h-9 text-sm">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Toggle Confirmation Dialog */}
+      <Dialog
+        open={categoryToggleConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelCategoryToggle()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              Disable Category
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              Are you sure you want to disable the category{' '}
+              <strong>&quot;{categoryToggleConfirmation?.categoryName}&quot;</strong>?
+              <span className="block mt-2 text-amber-600 font-medium">
+                This will remove its usage from your daily totals and stop tracking new activity for
+                this category.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmCategoryToggle}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 h-9 text-sm"
+            >
+              Disable Category
+            </Button>
+            <Button variant="outline" onClick={cancelCategoryToggle} className="h-9 text-sm">
               Cancel
             </Button>
           </div>
