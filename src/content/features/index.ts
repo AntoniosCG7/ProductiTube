@@ -17,6 +17,7 @@ import {
 } from './content';
 import { initializeTopHeader, initializeNotifications } from './header';
 import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';
+import { initializeVideoLimits } from './limits';
 
 type FeatureInitializer = (enabled: boolean) => (() => void) | void;
 
@@ -24,6 +25,7 @@ type FeatureInitializer = (enabled: boolean) => (() => void) | void;
  * Storage key for settings
  */
 const SETTINGS_STORAGE_KEY = 'youtube_settings';
+const LIMITS_STORAGE_KEY = 'youtube_limits_settings';
 
 // Map of feature keys to their initialization functions
 const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> = {
@@ -50,6 +52,7 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
 
 // Store cleanup functions
 const cleanupFunctions = new Map<keyof Settings, () => void>();
+let videoLimitsCleanup: (() => void) | undefined;
 
 // Utility to re-run features on navigation
 function watchYouTubeNavigation(onNavigate: () => void) {
@@ -74,11 +77,18 @@ function watchYouTubeNavigation(onNavigate: () => void) {
 
 export const initializeFeatures = async () => {
   try {
-    const storedData = await chrome.storage.sync.get(SETTINGS_STORAGE_KEY);
-    const settings = (storedData[SETTINGS_STORAGE_KEY] || {}) as Partial<Settings>;
-    console.debug('Initializing features with settings:', settings);
+    const [settingsData, limitsData] = await Promise.all([
+      chrome.storage.sync.get(SETTINGS_STORAGE_KEY),
+      chrome.storage.sync.get(LIMITS_STORAGE_KEY),
+    ]);
 
-    // Initialize features and store cleanup functions
+    const settings = (settingsData[SETTINGS_STORAGE_KEY] || {}) as Partial<Settings>;
+    const limitsSettings = limitsData[LIMITS_STORAGE_KEY] || {};
+
+    console.debug('Initializing features with settings:', settings);
+    console.debug('Initializing with limits settings:', limitsSettings);
+
+    // Initialize regular features and store cleanup functions
     Object.entries(featureInitializers).forEach(([key, initializer]) => {
       const settingKey = key as keyof Settings;
       const enabled = settings[settingKey] ?? false;
@@ -92,6 +102,12 @@ export const initializeFeatures = async () => {
         cleanupFunctions.set(settingKey, cleanup);
       }
     });
+
+    // Initialize video limits feature
+    if (videoLimitsCleanup) {
+      videoLimitsCleanup();
+    }
+    videoLimitsCleanup = initializeVideoLimits();
 
     // Reapply selected features on YouTube page navigation
     watchYouTubeNavigation(() => {
@@ -113,7 +129,7 @@ export const initializeFeatures = async () => {
       });
     });
 
-    // Listen for settings changes from the new storage structure
+    // Listen for settings changes from the storage
     chrome.storage.onChanged.addListener((changes) => {
       if (changes[SETTINGS_STORAGE_KEY]) {
         const newSettings = changes[SETTINGS_STORAGE_KEY].newValue || {};
@@ -131,6 +147,15 @@ export const initializeFeatures = async () => {
             cleanupFunctions.set(settingKey, cleanup);
           }
         });
+      }
+
+      // Reinitialize limits feature when limits settings change
+      if (changes[LIMITS_STORAGE_KEY]) {
+        console.debug('Limits settings changed, reinitializing video limits');
+        if (videoLimitsCleanup) {
+          videoLimitsCleanup();
+        }
+        videoLimitsCleanup = initializeVideoLimits();
       }
     });
   } catch (error) {
