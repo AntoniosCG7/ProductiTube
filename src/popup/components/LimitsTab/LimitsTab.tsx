@@ -356,20 +356,18 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     });
   };
 
-  const handleResetAllLimits = () => {
-    const currentModeCategories = getCurrentModeCategories();
-    const resetCategories = currentModeCategories.map((cat: VideoCategory) => ({
-      ...cat,
-      videosWatchedToday: 0,
-      timeWatchedToday: 0,
-    }));
-    updateLimitsSettings({
-      categories: {
-        ...limitsSettings.categories,
-        [activeMode]: resetCategories,
-      },
-    });
-    setTotalTimeWatched(0);
+  const handleResetAllLimits = async () => {
+    try {
+      await chrome.storage.local.remove('youtube_usage_data');
+
+      if (activeMode === 'time-total') {
+        setTotalTimeWatched(0);
+      }
+
+      console.debug('[ProductiTube] All limits reset');
+    } catch (error) {
+      console.error('Failed to reset limits:', error);
+    }
   };
 
   const handleTogglePreset = (presetName: string) => {
