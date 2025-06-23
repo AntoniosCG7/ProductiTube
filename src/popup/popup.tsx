@@ -17,7 +17,7 @@ import './styles/popup.css';
 const Popup: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState<TabId>('controls');
   const [settings, updateSettings, error, isRateLimited] = useSettings();
-  const [limitsSettings, updateLimitsSettings, limitsError] = useLimitsSettings();
+  const { limitsSettings, updateLimitsSettings, error: limitsError } = useLimitsSettings();
 
   const updateSetting = React.useCallback(
     async (key: keyof Settings, value: boolean) => {
