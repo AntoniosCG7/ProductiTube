@@ -10,6 +10,20 @@ const defaultLimitsSettings: LimitsSettings = {
 };
 
 const LIMITS_STORAGE_KEY = 'youtube_limits_settings';
+const USAGE_STORAGE_KEY = 'youtube_usage_data';
+
+interface UsageData {
+  [date: string]: {
+    [categoryId: string]: number;
+  };
+}
+
+/**
+ * Get today's date string for usage tracking
+ */
+const getTodayString = (): string => {
+  return new Date().toDateString();
+};
 
 /**
  * Hook for managing video limits settings with Chrome storage
@@ -26,12 +40,41 @@ export const useLimitsSettings = () => {
   const fetchLimitsSettings = useCallback(async () => {
     try {
       setIsLoading(true);
-      const storedSettings = await chrome.storage.sync.get(LIMITS_STORAGE_KEY);
+
+      // Load both limits settings and usage data
+      const [storedSettings, usageData] = await Promise.all([
+        chrome.storage.sync.get(LIMITS_STORAGE_KEY),
+        chrome.storage.local.get(USAGE_STORAGE_KEY),
+      ]);
+
+      const settings = storedSettings[LIMITS_STORAGE_KEY] || {};
+      const usage: UsageData = usageData[USAGE_STORAGE_KEY] || {};
+      const today = getTodayString();
+
       if (isMountedRef.current) {
-        setLimitsSettings((prev) => ({
-          ...prev,
-          ...(storedSettings[LIMITS_STORAGE_KEY] || {}),
-        }));
+        // Merge usage data with settings to show current counts
+        const mergedSettings = {
+          ...defaultLimitsSettings,
+          ...settings,
+        };
+
+        // Update categories with current usage data
+        if (mergedSettings.categories) {
+          ['video-count', 'time-category'].forEach((mode) => {
+            if (mergedSettings.categories[mode as keyof typeof mergedSettings.categories]) {
+              mergedSettings.categories[mode as keyof typeof mergedSettings.categories] =
+                mergedSettings.categories[mode as keyof typeof mergedSettings.categories].map(
+                  (category: any) => ({
+                    ...category,
+                    videosWatchedToday: usage[today]?.[category.id] || 0,
+                    timeWatchedToday: category.timeWatchedToday || 0,
+                  })
+                );
+            }
+          });
+        }
+
+        setLimitsSettings(mergedSettings);
         setError(null);
       }
     } catch (error) {
@@ -44,92 +87,100 @@ export const useLimitsSettings = () => {
     }
   }, []);
 
-  const performStorageWrite = useCallback(async (): Promise<void> => {
-    if (!isMountedRef.current || Object.keys(pendingUpdatesRef.current).length === 0) {
-      return;
-    }
-
+  const updateLimitsSettings = useCallback(async (updates: Partial<LimitsSettings>) => {
     try {
-      const finalSettings = {
-        ...limitsSettings,
-        ...pendingUpdatesRef.current,
-      };
+      // Clear any pending timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
 
-      await chrome.storage.sync.set({
-        [LIMITS_STORAGE_KEY]: finalSettings,
-      });
+      // Merge with pending updates
+      pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates };
 
-      pendingUpdatesRef.current = {};
-      setError(null);
+      // Update local state immediately for responsive UI
+      setLimitsSettings((prev) => ({ ...prev, ...updates }));
 
-      console.debug('[ProductiTube] Limits settings saved successfully');
+      // Debounce actual storage updates
+      updateTimeoutRef.current = window.setTimeout(async () => {
+        try {
+          const finalUpdates = pendingUpdatesRef.current;
+          pendingUpdatesRef.current = {};
+
+          const currentSettings = await chrome.storage.sync.get(LIMITS_STORAGE_KEY);
+          const newSettings = {
+            ...currentSettings[LIMITS_STORAGE_KEY],
+            ...finalUpdates,
+          };
+
+          await chrome.storage.sync.set({ [LIMITS_STORAGE_KEY]: newSettings });
+          console.debug('Limits settings updated:', newSettings);
+
+          // Send message to content script about the update
+          try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tabs[0]?.id && tabs[0].url?.includes('youtube.com')) {
+              await chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'LIMITS_UPDATED',
+                settings: newSettings,
+              });
+            }
+          } catch (tabError) {
+            console.debug('Could not send message to content script:', tabError);
+          }
+
+          setError(null);
+        } catch (storageError) {
+          console.error('Failed to update limits settings:', storageError);
+          setError(
+            storageError instanceof Error
+              ? storageError
+              : new Error('Failed to update limits settings')
+          );
+        }
+      }, 300);
     } catch (error) {
-      console.error('Failed to save limits settings:', error);
-
-      if (error instanceof Error && error.message.includes('QUOTA_BYTES_PER_ITEM')) {
-        setError(new Error('Limits data too large.'));
-      } else if (
-        error instanceof Error &&
-        error.message.includes('MAX_WRITE_OPERATIONS_PER_MINUTE')
-      ) {
-        setError(new Error('Too many changes. Please wait a moment before making more changes.'));
-      } else {
-        setError(error instanceof Error ? error : new Error('Failed to save limits settings'));
-        fetchLimitsSettings();
-      }
+      console.error('Failed to update limits settings:', error);
+      setError(error instanceof Error ? error : new Error('Failed to update limits settings'));
     }
-  }, [limitsSettings, fetchLimitsSettings]);
+  }, []);
 
-  const updateLimitsSettings = useCallback(
-    async (newSettings: Partial<LimitsSettings>) => {
-      setLimitsSettings((prev) => ({ ...prev, ...newSettings }));
-
-      pendingUpdatesRef.current = {
-        ...pendingUpdatesRef.current,
-        ...newSettings,
-      };
-
-      if (updateTimeoutRef.current) {
-        window.clearTimeout(updateTimeoutRef.current);
-      }
-
-      updateTimeoutRef.current = window.setTimeout(performStorageWrite, 300);
-    },
-    [performStorageWrite]
-  );
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    fetchLimitsSettings();
-
-    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
-      if (changes[LIMITS_STORAGE_KEY] && isMountedRef.current) {
-        setLimitsSettings((prev) => ({
-          ...prev,
-          ...changes[LIMITS_STORAGE_KEY].newValue,
-        }));
-      }
-    };
-
-    chrome.storage.sync.onChanged.addListener(handleStorageChange);
-
-    return () => {
-      isMountedRef.current = false;
-      chrome.storage.sync.onChanged.removeListener(handleStorageChange);
-
-      if (updateTimeoutRef.current) {
-        window.clearTimeout(updateTimeoutRef.current);
-      }
-    };
+  const resetAllUsage = useCallback(async () => {
+    try {
+      await chrome.storage.local.remove(USAGE_STORAGE_KEY);
+      await fetchLimitsSettings();
+      console.debug('All usage data reset');
+    } catch (error) {
+      console.error('Failed to reset usage data:', error);
+      setError(error instanceof Error ? error : new Error('Failed to reset usage data'));
+    }
   }, [fetchLimitsSettings]);
 
   useEffect(() => {
-    return () => {
-      if (updateTimeoutRef.current) {
-        window.clearTimeout(updateTimeoutRef.current);
+    fetchLimitsSettings();
+
+    // Listen for storage changes
+    const handleStorageChanges = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes[LIMITS_STORAGE_KEY] || changes[USAGE_STORAGE_KEY]) {
+        fetchLimitsSettings();
       }
     };
-  }, []);
 
-  return [limitsSettings, updateLimitsSettings, error, isLoading] as const;
+    chrome.storage.onChanged.addListener(handleStorageChanges);
+
+    return () => {
+      isMountedRef.current = false;
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      chrome.storage.onChanged.removeListener(handleStorageChanges);
+    };
+  }, [fetchLimitsSettings]);
+
+  return {
+    limitsSettings,
+    updateLimitsSettings,
+    resetAllUsage,
+    error,
+    isLoading,
+  };
 };
