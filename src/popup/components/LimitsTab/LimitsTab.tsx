@@ -1300,30 +1300,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   mode?
                   <span className="block mt-2 font-medium">
                     {(() => {
-                      const currentModeHasCategories =
-                        modeConfirmation.mode === 'video-count' ||
-                        modeConfirmation.mode === 'time-category'
-                          ? (limitsSettings.categories[modeConfirmation.mode]?.length || 0) > 0
-                          : false;
-                      const isTotal = modeConfirmation.mode === 'time-total';
-                      const hasTotalLimit =
-                        limitsSettings.totalDailyTimeLimit &&
-                        limitsSettings.totalDailyTimeLimit !== 60;
-
                       if (limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation.mode) {
                         return (
                           <span className="text-amber-600">
                             This will switch from your current mode and reset all limits for the new
-                            mode.
-                          </span>
-                        );
-                      } else if (
-                        !limitsSettings.isLimitsEnabled &&
-                        (currentModeHasCategories || (isTotal && hasTotalLimit))
-                      ) {
-                        return (
-                          <span className="text-amber-600">
-                            This will reset all previous limits and give you a fresh start with this
                             mode.
                           </span>
                         );
