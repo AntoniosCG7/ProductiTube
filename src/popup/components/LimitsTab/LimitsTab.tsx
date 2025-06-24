@@ -79,6 +79,9 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     currentState: boolean;
     isOpen: boolean;
   } | null>(null);
+  const [resetConfirmation, setResetConfirmation] = useState<{
+    isOpen: boolean;
+  } | null>(null);
 
   const getCurrentModeCategories = (): VideoCategory[] => {
     if (activeMode === 'video-count' || activeMode === 'time-category') {
@@ -396,7 +399,13 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     }
   };
 
-  const handleResetAllLimits = async () => {
+  const handleResetClick = () => {
+    setResetConfirmation({
+      isOpen: true,
+    });
+  };
+
+  const confirmReset = async () => {
     try {
       await chrome.storage.local.remove('youtube_usage_data');
 
@@ -408,6 +417,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     } catch (error) {
       console.error('Failed to reset limits:', error);
     }
+    setResetConfirmation(null);
+  };
+
+  const cancelReset = () => {
+    setResetConfirmation(null);
   };
 
   const handleTogglePreset = (presetName: string) => {
@@ -549,7 +563,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleResetAllLimits}
+                        onClick={handleResetClick}
                         className="h-8 px-3 text-xs bg-white/80 backdrop-blur-sm border-green-200 hover:bg-white hover:border-green-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
                       >
                         <RotateCcw className="w-3 h-3 mr-1.5" />
@@ -857,7 +871,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleResetAllLimits}
+                        onClick={handleResetClick}
                         className="h-8 px-3 text-xs bg-white/80 backdrop-blur-sm border-blue-200 hover:bg-white hover:border-blue-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
                       >
                         <RotateCcw className="w-3 h-3 mr-1.5" />
@@ -1538,6 +1552,39 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               Disable Category
             </Button>
             <Button variant="outline" onClick={cancelCategoryToggle} className="h-9 text-sm">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog
+        open={resetConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelReset()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              Reset All Usage Data
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              Are you sure you want to reset all your daily usage data?
+              <span className="block mt-2 text-amber-600 font-medium">
+                This will clear all today&apos;s video counts and time tracking. This action cannot
+                be undone.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmReset}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 h-9 text-sm"
+            >
+              Reset All Data
+            </Button>
+            <Button variant="outline" onClick={cancelReset} className="h-9 text-sm">
               Cancel
             </Button>
           </div>
