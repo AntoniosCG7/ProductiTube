@@ -983,7 +983,7 @@ const createCategoryModal = (): HTMLElement => {
 
   countdownInterval = window.setInterval(updateCountdown, 1000);
 
-  (modal as any).__countdownInterval = countdownInterval;
+  (modal as HTMLElement & { __countdownInterval?: number }).__countdownInterval = countdownInterval;
 
   const categoryButtons = modal.querySelectorAll('.productitube-category-option:not(:disabled)');
   categoryButtons.forEach((button) => {
@@ -1181,7 +1181,8 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
 const removeModal = (): void => {
   const existingModal = document.getElementById('productitube-category-modal');
   if (existingModal) {
-    const intervalId = (existingModal as any).__countdownInterval;
+    const intervalId = (existingModal as HTMLElement & { __countdownInterval?: number })
+      .__countdownInterval;
     if (intervalId) {
       clearInterval(intervalId);
     }
