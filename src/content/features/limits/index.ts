@@ -180,6 +180,9 @@ const createCategoryModal = (): HTMLElement => {
       </div>
       
       <div class="productitube-modal-footer">
+       <button id="productitube-home-btn" class="productitube-btn-secondary">
+          Go to Home Feed
+        </button>
         <button id="productitube-continue-btn" class="productitube-btn-primary" disabled>
           Continue
         </button>
@@ -476,10 +479,52 @@ const createCategoryModal = (): HTMLElement => {
       display: flex;
       justify-content: center;
       background: #fafafa;
+      gap: 12px;
       flex-shrink: 0;
       box-sizing: border-box;
     }
-    
+
+    .productitube-btn-secondary {
+      padding: 12px 24px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      background: white;
+      color: #475569;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .productitube-btn-secondary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(71, 85, 105, 0.05) 0%, rgba(71, 85, 105, 0.02) 100%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .productitube-btn-secondary:hover::before {
+      opacity: 1;
+    }
+
+    .productitube-btn-secondary:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .productitube-btn-secondary:active {
+      transform: translateY(0);
+    }
+
     .productitube-btn-primary {
       padding: clamp(10px, 1.8vw, 12px) clamp(24px, 4vw, 32px);
       border: none;
@@ -602,6 +647,11 @@ const createCategoryModal = (): HTMLElement => {
     if (selectedCategoryId) {
       await handleCategorySelection(selectedCategoryId);
     }
+  });
+
+  const homeButton = modal.querySelector('#productitube-home-btn');
+  homeButton?.addEventListener('click', () => {
+    window.location.href = '/';
   });
 
   return modal;
