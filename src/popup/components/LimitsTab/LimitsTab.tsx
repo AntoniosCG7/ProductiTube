@@ -17,7 +17,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ColorPicker } from '@/components/ui/color-picker';
-import { Progress } from '@/components/ui/progress';
 import {
   Plus,
   Edit2,
@@ -586,10 +585,14 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           <div className="text-xl font-bold text-gray-800">{totalVideoLimit}</div>
                         </div>
                       </div>
-                      <Progress
-                        value={getProgressPercentage(totalVideosWatched, totalVideoLimit)}
-                        className="h-2.5"
-                      />
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalVideosWatched, totalVideoLimit))}`}
+                          style={{
+                            width: `${Math.min(getProgressPercentage(totalVideosWatched, totalVideoLimit), 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -897,13 +900,14 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           </div>
                         </div>
                       </div>
-                      <Progress
-                        value={getProgressPercentage(
-                          totalCategoryTimeWatched,
-                          totalCategoryTimeLimit
-                        )}
-                        className="h-2.5"
-                      />
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit))}`}
+                          style={{
+                            width: `${Math.min(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit), 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1201,10 +1205,14 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         </div>
                       </div>
 
-                      <Progress
-                        value={getProgressPercentage(totalTimeWatched, totalTimeLimit)}
-                        className="h-2.5"
-                      />
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalTimeWatched, totalTimeLimit))}`}
+                          style={{
+                            width: `${Math.min(getProgressPercentage(totalTimeWatched, totalTimeLimit), 100)}%`,
+                          }}
+                        />
+                      </div>
 
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">
