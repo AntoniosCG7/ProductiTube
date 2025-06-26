@@ -612,7 +612,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         <DialogTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 h-8 px-3 text-xs shadow-md hover:shadow-lg transition-all duration-200 border-0 ml-3 flex-shrink-0"
+                            className="bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 px-3 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out border-0 ml-3 flex-shrink-0"
                           >
                             <Plus className="w-3 h-3" />
                             Add
@@ -730,7 +730,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                             <div className="flex gap-2">
                               <Button
                                 onClick={handleAddCategory}
-                                className="flex-1 bg-red-500 hover:bg-[#c81e1e] h-8 text-xs"
+                                className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
                               >
                                 {selectedPresets.length > 0 && newCategory.name.trim()
                                   ? `Add Category + ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
@@ -927,7 +927,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       <DialogTrigger asChild>
                         <Button
                           size="sm"
-                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 h-8 px-3 text-xs shadow-md hover:shadow-lg transition-all duration-200 border-0 ml-3 flex-shrink-0"
+                          className="bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 px-3 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out border-0 ml-3 flex-shrink-0"
                         >
                           <Plus className="w-3 h-3" />
                           Add
@@ -1042,7 +1042,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           <div className="flex gap-2">
                             <Button
                               onClick={handleAddCategory}
-                              className="flex-1 bg-red-500 hover:bg-red-600 h-8 text-xs"
+                              className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
                             >
                               {selectedPresets.length > 0 && newCategory.name.trim()
                                 ? `Add Category + ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
@@ -1360,7 +1360,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
           <div className="flex gap-2 mt-2">
             <Button
               onClick={confirmModeChange}
-              className="flex-1 bg-red-500 hover:bg-red-600 h-9 text-sm"
+              className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-9 text-sm"
             >
               {modeConfirmation?.enabled ? 'Enable Mode' : 'Disable Limits'}
             </Button>
@@ -1477,7 +1477,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             <div className="flex gap-2">
               <Button
                 onClick={handleUpdateCategory}
-                className="flex-1 bg-red-500 hover:bg-red-600 h-8 text-xs"
+                className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
               >
                 Update Category
               </Button>
