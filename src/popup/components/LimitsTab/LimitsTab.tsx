@@ -828,7 +828,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                     isExceeded ? 'text-red-600 font-medium' : 'text-gray-600'
                                   }
                                 >
-                                  {isExceeded ? 'Exceeded' : `${remainingVideos} left`}
+                                  {isExceeded ? 'Reached' : `${remainingVideos} left`}
                                 </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -1138,7 +1138,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                   }
                                 >
                                   {isExceeded
-                                    ? 'Time exceeded'
+                                    ? 'Time reached'
                                     : `${formatTime(remainingTime)} remaining`}
                                 </span>
                               </div>
