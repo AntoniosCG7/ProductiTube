@@ -708,9 +708,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                       size="sm"
                                       onClick={() => handleTogglePreset(preset.name)}
                                       disabled={isAlreadyAdded}
-                                      className={`h-6 px-2 text-xs ${
-                                        isSelected ? 'border-red-500 border-2 bg-red-50' : ''
-                                      } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                      className={`h-6 px-2 text-xs transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 ${
+                                        isSelected
+                                          ? 'border-red-500 border-2 bg-red-50 text-red-700 shadow-md scale-105'
+                                          : 'hover:border-red-300 hover:bg-red-25 hover:shadow-sm'
+                                      } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
                                     >
                                       <div
                                         className="w-2 h-2 rounded-full mr-1"
@@ -1020,11 +1022,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                     size="sm"
                                     onClick={() => handleTogglePreset(preset.name)}
                                     disabled={isAlreadyAdded}
-                                    className={`h-6 px-2 text-xs ${
+                                    className={`h-6 px-2 text-xs transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 ${
                                       isSelected
-                                        ? 'border-red-500 border-2 bg-red-50 text-red-700'
-                                        : ''
-                                    } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        ? 'border-red-500 border-2 bg-red-50 text-red-700 shadow-md scale-105'
+                                        : 'hover:border-red-300 hover:bg-red-25 hover:shadow-sm'
+                                    } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
                                   >
                                     <div
                                       className="w-2 h-2 rounded-full mr-1"
