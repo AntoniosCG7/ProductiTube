@@ -35,6 +35,53 @@ const getTodayString = (): string => {
 };
 
 /**
+ * Get time remaining until midnight (12 AM)
+ */
+const getTimeUntilMidnight = (): {
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalMs: number;
+} => {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+
+  const totalMs = midnight.getTime() - now.getTime();
+  const hours = Math.floor(totalMs / (1000 * 60 * 60));
+  const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((totalMs % (1000 * 60)) / 1000);
+
+  return { hours, minutes, seconds, totalMs };
+};
+
+/**
+ * Clean up old usage data (keep only last 7 days)
+ */
+const cleanupOldUsageData = async (): Promise<void> => {
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 7);
+
+    const updatedUsageData: UsageData = {};
+
+    for (const [dateStr, data] of Object.entries(state.usageData)) {
+      const dataDate = new Date(dateStr);
+      if (dataDate >= cutoffDate) {
+        updatedUsageData[dateStr] = data;
+      }
+    }
+
+    state.usageData = updatedUsageData;
+    await saveUsageData();
+
+    console.debug('[ProductiTube Limits] Cleaned up old usage data');
+  } catch (error) {
+    console.error('[ProductiTube Limits] Failed to cleanup old usage data:', error);
+  }
+};
+
+/**
  * Load limits settings and usage data
  */
 const loadData = async (): Promise<void> => {
@@ -46,6 +93,9 @@ const loadData = async (): Promise<void> => {
 
     state.settings = limitsData[LIMITS_STORAGE_KEY] || null;
     state.usageData = usageData[USAGE_STORAGE_KEY] || {};
+
+    // Clean up old usage data to keep storage optimized
+    await cleanupOldUsageData();
 
     console.debug('[ProductiTube Limits] Loaded data:', {
       settings: state.settings,
@@ -123,6 +173,46 @@ const createCategoryModal = (): HTMLElement => {
       </div>
       
       <div class="productitube-modal-body">
+        <div class="productitube-countdown-timer">
+          <div class="productitube-countdown-container">
+            <div class="productitube-countdown-icon-wrapper">
+              <div class="productitube-countdown-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                  <path d="m12 6 0 6 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="productitube-countdown-pulse"></div>
+              </div>
+            </div>
+            <div class="productitube-countdown-content">
+              <div class="productitube-countdown-label">Limits reset in</div>
+              <div class="productitube-countdown-display">
+                <div id="productitube-countdown-time" class="productitube-countdown-time">
+                  <span class="productitube-time-segment">
+                    <span class="productitube-time-value">--</span>
+                    <span class="productitube-time-unit">h</span>
+                  </span>
+                  <span class="productitube-time-separator">:</span>
+                  <span class="productitube-time-segment">
+                    <span class="productitube-time-value">--</span>
+                    <span class="productitube-time-unit">m</span>
+                  </span>
+                  <span class="productitube-time-separator">:</span>
+                  <span class="productitube-time-segment">
+                    <span class="productitube-time-value">--</span>
+                    <span class="productitube-time-unit">s</span>
+                  </span>
+                </div>
+                <div class="productitube-countdown-progress">
+                  <div class="productitube-progress-bar">
+                    <div id="productitube-progress-fill" class="productitube-progress-fill"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <div class="productitube-category-grid">
           ${activeCategories
             .map((category) => {
@@ -207,6 +297,37 @@ const createCategoryModal = (): HTMLElement => {
         transform: scale(1) translateY(0); 
       }
     }
+
+    @keyframes productitube-pulse {
+      0%, 100% { 
+        opacity: 0.4; 
+        transform: scale(1); 
+      }
+      50% { 
+        opacity: 0.8; 
+        transform: scale(1.1); 
+      }
+    }
+
+    @keyframes productitube-countdown-glow {
+      0%, 100% { 
+        box-shadow: 0 0 5px rgba(239, 68, 68, 0.3); 
+      }
+      50% { 
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), 0 0 30px rgba(239, 68, 68, 0.4); 
+      }
+    }
+
+    @keyframes productitube-digit-flip {
+      0% { transform: rotateX(0deg); }
+      50% { transform: rotateX(-90deg); }
+      100% { transform: rotateX(0deg); }
+    }
+
+    @keyframes productitube-progress-pulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 1; }
+    }
     
     .productitube-modal-overlay {
       position: fixed;
@@ -270,7 +391,7 @@ const createCategoryModal = (): HTMLElement => {
     
     .productitube-header-text p {
       margin: 0;
-      font-size: clamp(12px, 2.2vw, 14px);
+      font-size: clamp(12px, 2vw, 14px);
       color: rgba(255, 255, 255, 0.9);
       line-height: 1.4;
     }
@@ -282,6 +403,187 @@ const createCategoryModal = (): HTMLElement => {
       min-height: 0;
     }
     
+    .productitube-countdown-timer {
+      background: linear-gradient(135deg, #fef7f7 0%, #fef2f2 50%, #fef7f7 100%);
+      border: 2px solid #fecaca;
+      border-radius: clamp(12px, 2vw, 16px);
+      padding: clamp(16px, 3vw, 20px);
+      margin-bottom: clamp(20px, 3vw, 24px);
+      position: relative;
+      overflow: hidden;
+      animation: productitube-countdown-glow 3s ease-in-out infinite;
+    }
+
+    .productitube-countdown-timer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent);
+      animation: productitube-shimmer 3s ease-in-out infinite;
+    }
+
+    @keyframes productitube-shimmer {
+      0% { left: -100%; }
+      50% { left: 100%; }
+      100% { left: 100%; }
+    }
+    
+    .productitube-countdown-container {
+      display: flex;
+      align-items: center;
+      gap: clamp(16px, 3vw, 20px);
+      position: relative;
+      z-index: 1;
+    }
+    
+    .productitube-countdown-icon-wrapper {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .productitube-countdown-icon {
+      width: clamp(40px, 6vw, 48px);
+      height: clamp(40px, 6vw, 48px);
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .productitube-countdown-pulse {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
+      border: 2px solid #ef4444;
+      border-radius: 50%;
+      animation: productitube-pulse 2s ease-in-out infinite;
+    }
+    
+    .productitube-countdown-content {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .productitube-countdown-label {
+      font-size: clamp(11px, 1.8vw, 13px);
+      color: #7f1d1d;
+      font-weight: 600;
+      margin-bottom: clamp(6px, 1vw, 8px);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .productitube-countdown-display {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(8px, 1.5vw, 10px);
+    }
+
+    .productitube-countdown-time {
+      display: flex;
+      align-items: center;
+      gap: clamp(2px, 0.5vw, 4px);
+      font-family: 'Courier New', 'Monaco', monospace;
+    }
+
+    .productitube-time-segment {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: clamp(6px, 1vw, 8px);
+      padding: clamp(4px, 0.8vw, 6px) clamp(6px, 1vw, 8px);
+      min-width: clamp(32px, 5vw, 40px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .productitube-time-segment::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .productitube-time-segment:hover::before {
+      opacity: 1;
+    }
+
+    .productitube-time-value {
+      font-size: clamp(16px, 3vw, 20px);
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1;
+      animation: productitube-digit-flip 0.6s ease-in-out;
+    }
+
+    .productitube-time-unit {
+      font-size: clamp(8px, 1.2vw, 10px);
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 1px;
+    }
+
+    .productitube-time-separator {
+      font-size: clamp(14px, 2.5vw, 18px);
+      color: #ef4444;
+      font-weight: 700;
+      animation: productitube-pulse 1s ease-in-out infinite;
+      margin: 0 clamp(2px, 0.5vw, 4px);
+    }
+
+    .productitube-countdown-progress {
+      width: 100%;
+    }
+
+    .productitube-progress-bar {
+      width: 100%;
+      height: clamp(4px, 0.8vw, 6px);
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: clamp(2px, 0.4vw, 3px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .productitube-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+      border-radius: clamp(2px, 0.4vw, 3px);
+      transition: width 1s ease-out;
+      animation: productitube-progress-pulse 2s ease-in-out infinite;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .productitube-progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: productitube-shimmer 2s ease-in-out infinite;
+    }
+
     /* Red scrollbar styling for modal */
     .productitube-modal-overlay *::-webkit-scrollbar {
       width: 6px !important;
@@ -621,6 +923,67 @@ const createCategoryModal = (): HTMLElement => {
   }, 100);
 
   let selectedCategoryId: string | null = null;
+  let countdownInterval: number | null = null;
+
+  const updateCountdown = () => {
+    const { hours, minutes, seconds, totalMs } = getTimeUntilMidnight();
+    const countdownElement = modal.querySelector('#productitube-countdown-time');
+    const progressFill = modal.querySelector('#productitube-progress-fill') as HTMLElement;
+
+    if (countdownElement) {
+      const timeSegments = countdownElement.querySelectorAll('.productitube-time-value');
+      const newValues =
+        hours > 0
+          ? [
+              hours.toString().padStart(2, '0'),
+              minutes.toString().padStart(2, '0'),
+              seconds.toString().padStart(2, '0'),
+            ]
+          : ['00', minutes.toString().padStart(2, '0'), seconds.toString().padStart(2, '0')];
+
+      if (timeSegments && timeSegments.length > 0) {
+        timeSegments.forEach((segment, index) => {
+          const htmlSegment = segment as HTMLElement;
+          if (segment && htmlSegment && segment.textContent !== newValues[index]) {
+            htmlSegment.style.animation = 'none';
+            htmlSegment.offsetHeight;
+            htmlSegment.style.animation = 'productitube-digit-flip 0.6s ease-in-out';
+            segment.textContent = newValues[index];
+          }
+        });
+      }
+
+      const hourSegment = countdownElement.querySelector(
+        '.productitube-time-segment:first-child'
+      ) as HTMLElement;
+      const firstSeparator = countdownElement.querySelector(
+        '.productitube-time-separator:first-of-type'
+      ) as HTMLElement;
+
+      if (hourSegment && firstSeparator) {
+        if (hours === 0) {
+          hourSegment.style.display = 'none';
+          firstSeparator.style.display = 'none';
+        } else {
+          hourSegment.style.display = 'flex';
+          firstSeparator.style.display = 'block';
+        }
+      }
+    }
+
+    if (progressFill) {
+      const totalDayMs = 24 * 60 * 60 * 1000;
+      const elapsedMs = totalDayMs - totalMs;
+      const progressPercent = (elapsedMs / totalDayMs) * 100;
+      progressFill.style.width = `${Math.max(0, Math.min(100, progressPercent))}%`;
+    }
+  };
+
+  updateCountdown();
+
+  countdownInterval = window.setInterval(updateCountdown, 1000);
+
+  (modal as any).__countdownInterval = countdownInterval;
 
   const categoryButtons = modal.querySelectorAll('.productitube-category-option:not(:disabled)');
   categoryButtons.forEach((button) => {
@@ -630,7 +993,6 @@ const createCategoryModal = (): HTMLElement => {
         modal.querySelectorAll('.productitube-category-option').forEach((btn) => {
           btn.classList.remove('selected');
         });
-
         (e.currentTarget as HTMLElement).classList.add('selected');
         selectedCategoryId = categoryId;
 
@@ -817,12 +1179,19 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
  * Remove modal from DOM
  */
 const removeModal = (): void => {
+  const existingModal = document.getElementById('productitube-category-modal');
+  if (existingModal) {
+    const intervalId = (existingModal as any).__countdownInterval;
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+  }
+
   if (state.modalElement && state.modalElement.parentNode) {
     state.modalElement.parentNode.removeChild(state.modalElement);
     state.modalElement = null;
   }
 
-  const existingModal = document.getElementById('productitube-category-modal');
   if (existingModal && existingModal.parentNode) {
     existingModal.parentNode.removeChild(existingModal);
   }
