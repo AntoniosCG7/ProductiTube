@@ -16,6 +16,9 @@ interface VideoLimitsState {
   modalElement: HTMLElement | null;
   videoElement: HTMLVideoElement | null;
   isProcessingVideo: boolean;
+  currentVideoUrl: string | null;
+  pendingTimeouts: number[];
+  isModalVisible: boolean;
 }
 
 const state: VideoLimitsState = {
@@ -25,6 +28,43 @@ const state: VideoLimitsState = {
   modalElement: null,
   videoElement: null,
   isProcessingVideo: false,
+  currentVideoUrl: null,
+  pendingTimeouts: [],
+  isModalVisible: false,
+};
+
+/**
+ * Clear all pending timeouts
+ */
+const clearPendingTimeouts = (): void => {
+  state.pendingTimeouts.forEach((timeoutId) => {
+    clearTimeout(timeoutId);
+  });
+  state.pendingTimeouts = [];
+};
+
+/**
+ * Add a timeout to tracking
+ */
+const trackTimeout = (timeoutId: number): void => {
+  state.pendingTimeouts.push(timeoutId);
+};
+
+/**
+ * Reset processing state completely
+ */
+const resetProcessingState = (): void => {
+  clearPendingTimeouts();
+  state.isProcessingVideo = false;
+  state.isModalVisible = false;
+  state.currentVideoUrl = null;
+};
+
+/**
+ * Get current video URL for comparison
+ */
+const getCurrentVideoUrl = (): string => {
+  return window.location.href;
 };
 
 /**
@@ -1004,10 +1044,47 @@ const createCategoryModal = (): HTMLElement => {
     });
   });
 
-  const continueButton = modal.querySelector('#productitube-continue-btn');
-  continueButton?.addEventListener('click', async () => {
-    if (selectedCategoryId) {
+  const continueButton = modal.querySelector('#productitube-continue-btn') as HTMLButtonElement;
+  continueButton?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.debug('[ProductiTube Limits] Continue button clicked', {
+      selectedCategoryId,
+      isModalVisible: state.isModalVisible,
+      isProcessingVideo: state.isProcessingVideo,
+      buttonDisabled: continueButton?.disabled,
+    });
+
+    if (!selectedCategoryId) {
+      console.warn('[ProductiTube Limits] No category selected');
+      return;
+    }
+
+    if (continueButton) {
+      continueButton.disabled = true;
+      continueButton.textContent = 'Processing...';
+    }
+
+    const failsafeTimeout = setTimeout(() => {
+      if (continueButton && continueButton.disabled) {
+        console.warn('[ProductiTube Limits] Failsafe: Re-enabling continue button after timeout');
+        continueButton.disabled = false;
+        continueButton.textContent = 'Continue';
+      }
+    }, 10000);
+
+    try {
       await handleCategorySelection(selectedCategoryId);
+      clearTimeout(failsafeTimeout);
+    } catch (error) {
+      console.error('[ProductiTube Limits] Error handling category selection:', error);
+      clearTimeout(failsafeTimeout);
+
+      if (continueButton) {
+        continueButton.disabled = false;
+        continueButton.textContent = 'Continue';
+      }
     }
   });
 
@@ -1023,19 +1100,57 @@ const createCategoryModal = (): HTMLElement => {
  * Handle category selection
  */
 const handleCategorySelection = async (categoryId: string): Promise<void> => {
+  console.debug('[ProductiTube Limits] Handling category selection', {
+    categoryId,
+    isModalVisible: state.isModalVisible,
+    isProcessingVideo: state.isProcessingVideo,
+    modalExists: !!document.getElementById('productitube-category-modal'),
+  });
+
+  const modalExists = !!document.getElementById('productitube-category-modal');
+  if (!modalExists) {
+    console.debug('[ProductiTube Limits] Category selection ignored - no modal exists');
+    return;
+  }
+
+  if (!state.isModalVisible && !state.isProcessingVideo) {
+    console.debug('[ProductiTube Limits] Category selection ignored - already processed');
+    return;
+  }
+
   const category = state.settings?.categories['video-count']?.find((cat) => cat.id === categoryId);
-  if (!category) return;
+  if (!category) {
+    console.error('[ProductiTube Limits] Category not found:', categoryId);
+    return;
+  }
 
-  await incrementVideoCount(categoryId);
+  state.isModalVisible = false;
 
-  const newCount = getVideosWatchedToday(categoryId);
-  const hasReachedLimit = newCount >= category.dailyLimitCount;
+  try {
+    console.debug('[ProductiTube Limits] Incrementing video count for category:', category.name);
+    await incrementVideoCount(categoryId);
 
-  if (hasReachedLimit) {
-    showLimitReachedMessage(category);
-  } else {
-    resumeVideo();
-    removeModal();
+    const newCount = getVideosWatchedToday(categoryId);
+    const hasReachedLimit = newCount >= category.dailyLimitCount;
+
+    console.debug('[ProductiTube Limits] Category selection completed', {
+      categoryName: category.name,
+      newCount,
+      limit: category.dailyLimitCount,
+      hasReachedLimit,
+    });
+
+    if (hasReachedLimit) {
+      showLimitReachedMessage(category);
+    } else {
+      resumeVideo();
+      removeModal();
+    }
+  } catch (error) {
+    console.error('[ProductiTube Limits] Error in category selection:', error);
+
+    state.isModalVisible = true;
+    throw error;
   }
 };
 
@@ -1211,6 +1326,8 @@ const removeModal = (): void => {
   if (scrollbarOverride) {
     scrollbarOverride.remove();
   }
+
+  resetProcessingState();
 };
 
 /**
@@ -1248,35 +1365,60 @@ const isVideoWatchPage = (): boolean => {
  * Handle video load event
  */
 const handleVideoLoad = async (): Promise<void> => {
-  if (!isVideoWatchPage() || state.isProcessingVideo) return;
+  const currentUrl = getCurrentVideoUrl();
 
-  await loadData();
-
-  if (!state.settings?.isLimitsEnabled || state.settings?.activeMode !== 'video-count') {
+  if (!isVideoWatchPage() || state.isProcessingVideo || state.currentVideoUrl === currentUrl) {
     return;
   }
 
-  const categories = state.settings.categories['video-count'] || [];
-  const activeCategories = categories.filter((cat) => cat.isActive);
-
-  if (activeCategories.length === 0) {
-    console.debug('[ProductiTube Limits] No active categories, skipping limits');
-    return;
-  }
+  clearPendingTimeouts();
 
   state.isProcessingVideo = true;
+  state.currentVideoUrl = currentUrl;
 
-  const waitForVideo = () => {
-    const video = document.querySelector('video') as HTMLVideoElement;
-    if (video && video.readyState >= 1) {
-      pauseVideo();
-      state.modalElement = createCategoryModal();
-    } else {
-      setTimeout(waitForVideo, 500);
+  try {
+    await loadData();
+
+    if (!state.settings?.isLimitsEnabled || state.settings?.activeMode !== 'video-count') {
+      resetProcessingState();
+      return;
     }
-  };
 
-  setTimeout(waitForVideo, 1000);
+    const categories = state.settings.categories['video-count'] || [];
+    const activeCategories = categories.filter((cat) => cat.isActive);
+
+    if (activeCategories.length === 0) {
+      console.debug('[ProductiTube Limits] No active categories, skipping limits');
+      resetProcessingState();
+      return;
+    }
+
+    const waitForVideo = () => {
+      if (state.isModalVisible || document.getElementById('productitube-category-modal')) {
+        console.debug('[ProductiTube Limits] Modal already exists, skipping creation');
+        return;
+      }
+
+      const video = document.querySelector('video') as HTMLVideoElement;
+      if (video && video.readyState >= 1) {
+        pauseVideo();
+        state.modalElement = createCategoryModal();
+        state.isModalVisible = true;
+        console.debug('[ProductiTube Limits] Modal created successfully');
+      } else {
+        if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
+          const timeoutId = window.setTimeout(waitForVideo, 500);
+          trackTimeout(timeoutId);
+        }
+      }
+    };
+
+    const initialTimeoutId = window.setTimeout(waitForVideo, 1000);
+    trackTimeout(initialTimeoutId);
+  } catch (error) {
+    console.error('[ProductiTube Limits] Error in handleVideoLoad:', error);
+    resetProcessingState();
+  }
 };
 
 /**
@@ -1339,7 +1481,7 @@ export const initializeVideoLimits = (): (() => void) => {
     }
 
     removeModal();
+    resetProcessingState();
     state.isActive = false;
-    state.isProcessingVideo = false;
   };
 };
