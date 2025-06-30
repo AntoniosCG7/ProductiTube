@@ -31,6 +31,15 @@ export interface VideoCategory {
   isActive: boolean;
 }
 
+export interface FavoriteCategory {
+  id: string;
+  name: string;
+  color: string;
+  dailyLimitCount: number;
+  dailyTimeLimit: number;
+  createdAt: number;
+}
+
 export interface LimitsSettings {
   isLimitsEnabled: boolean;
   categories: {
@@ -39,6 +48,7 @@ export interface LimitsSettings {
   };
   activeMode?: 'video-count' | 'time-category' | 'time-total';
   totalDailyTimeLimit?: number;
+  favoriteCategories?: FavoriteCategory[];
 }
 
 export interface LimitsTabProps {
