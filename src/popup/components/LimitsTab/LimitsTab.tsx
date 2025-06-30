@@ -88,6 +88,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     action: 'add' | 'remove';
     isOpen: boolean;
   } | null>(null);
+  const [loadFavoritesConfirmation, setLoadFavoritesConfirmation] = useState<{
+    isOpen: boolean;
+    favoritesToAdd: FavoriteCategory[];
+    existingCount: number;
+  } | null>(null);
 
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
 
@@ -95,7 +100,33 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     const favorites = limitsSettings.favoriteCategories || [];
     if (favorites.length === 0) return;
 
-    const newCategories: VideoCategory[] = favorites.map((fav: FavoriteCategory) => ({
+    const currentModeCategories = getCurrentModeCategories();
+    const existingCategoryNames = currentModeCategories.map((cat: VideoCategory) =>
+      cat.name.toLowerCase()
+    );
+
+    const favoritesToAdd = favorites.filter(
+      (fav) => !existingCategoryNames.includes(fav.name.toLowerCase())
+    );
+
+    if (favoritesToAdd.length === 0) {
+      return;
+    }
+
+    setLoadFavoritesConfirmation({
+      isOpen: true,
+      favoritesToAdd,
+      existingCount: currentModeCategories.length,
+    });
+  };
+
+  const confirmLoadFavorites = () => {
+    if (!loadFavoritesConfirmation) return;
+
+    const currentModeCategories = getCurrentModeCategories();
+    const { favoritesToAdd } = loadFavoritesConfirmation;
+
+    const newCategories: VideoCategory[] = favoritesToAdd.map((fav: FavoriteCategory) => ({
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       name: fav.name,
       color: fav.color,
@@ -109,9 +140,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     updateLimitsSettings({
       categories: {
         ...limitsSettings.categories,
-        [activeMode]: newCategories,
+        [activeMode]: [...currentModeCategories, ...newCategories],
       },
     });
+
+    setLoadFavoritesConfirmation(null);
+  };
+
+  const cancelLoadFavorites = () => {
+    setLoadFavoritesConfirmation(null);
   };
 
   const handleFavoriteClick = (category: VideoCategory) => {
@@ -1845,6 +1882,78 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 : 'Remove from Favorites'}
             </Button>
             <Button variant="outline" onClick={cancelFavoriteAction} className="h-9 text-sm">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load Favorites Confirmation Dialog */}
+      <Dialog
+        open={loadFavoritesConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelLoadFavorites()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <Zap className="w-5 h-5 text-amber-500" />
+              Load Favorite Categories
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              {loadFavoritesConfirmation?.existingCount === 0 ? (
+                <>
+                  Are you sure you want to load{' '}
+                  <strong>
+                    {loadFavoritesConfirmation?.favoritesToAdd.length} favorite categories
+                  </strong>
+                  ?
+                  <span className="block mt-2 text-blue-600 font-medium">
+                    These categories will be added to your current setup.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Are you sure you want to load{' '}
+                  <strong>
+                    {loadFavoritesConfirmation?.favoritesToAdd.length} favorite categories
+                  </strong>
+                  ?
+                  <span className="block mt-2 text-blue-600 font-medium">
+                    These will be added to your existing {loadFavoritesConfirmation?.existingCount}{' '}
+                    categories. Duplicates will be skipped automatically.
+                  </span>
+                </>
+              )}
+              {loadFavoritesConfirmation?.favoritesToAdd &&
+                loadFavoritesConfirmation.favoritesToAdd.length > 0 && (
+                  <div className="mt-3 p-2 bg-gray-50 rounded border">
+                    <div className="text-xs text-gray-600 mb-1">Categories to add:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {loadFavoritesConfirmation.favoritesToAdd.map((fav, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs"
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: fav.color }}
+                          />
+                          {fav.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmLoadFavorites}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 h-9 text-sm"
+            >
+              Load Categories
+            </Button>
+            <Button variant="outline" onClick={cancelLoadFavorites} className="h-9 text-sm">
               Cancel
             </Button>
           </div>
