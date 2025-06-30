@@ -27,8 +27,10 @@ import {
   Hash,
   Timer,
   Save,
+  Star,
+  Zap,
 } from 'lucide-react';
-import type { LimitsTabProps, VideoCategory } from '@/types';
+import type { LimitsTabProps, VideoCategory, FavoriteCategory } from '@/types';
 
 const PRESET_CATEGORIES = [
   { name: 'Education', color: '#10b981' },
@@ -81,6 +83,64 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const [resetConfirmation, setResetConfirmation] = useState<{
     isOpen: boolean;
   } | null>(null);
+
+  const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
+
+  const handleLoadFavorites = () => {
+    const favorites = limitsSettings.favoriteCategories || [];
+    if (favorites.length === 0) return;
+
+    const newCategories: VideoCategory[] = favorites.map((fav: FavoriteCategory) => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: fav.name,
+      color: fav.color,
+      dailyLimitCount: fav.dailyLimitCount,
+      dailyTimeLimit: fav.dailyTimeLimit || 60,
+      videosWatchedToday: 0,
+      timeWatchedToday: 0,
+      isActive: true,
+    }));
+
+    updateLimitsSettings({
+      categories: {
+        ...limitsSettings.categories,
+        [activeMode]: newCategories,
+      },
+    });
+  };
+
+  const toggleCategoryFavorite = (category: VideoCategory) => {
+    const existingFavorites = limitsSettings.favoriteCategories || [];
+    const isFavorited = existingFavorites.some(
+      (fav) => fav.name.toLowerCase() === category.name.toLowerCase()
+    );
+
+    if (isFavorited) {
+      const updatedFavorites = existingFavorites.filter(
+        (fav) => fav.name.toLowerCase() !== category.name.toLowerCase()
+      );
+      updateLimitsSettings({
+        favoriteCategories: updatedFavorites,
+      });
+    } else {
+      const newFavorite: FavoriteCategory = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        name: category.name,
+        color: category.color,
+        dailyLimitCount: category.dailyLimitCount,
+        dailyTimeLimit: category.dailyTimeLimit || 60,
+        createdAt: Date.now(),
+      };
+      updateLimitsSettings({
+        favoriteCategories: [...existingFavorites, newFavorite],
+      });
+    }
+  };
+
+  const isCategoryFavorited = (category: VideoCategory) => {
+    const existingFavorites = limitsSettings.favoriteCategories || [];
+    return existingFavorites.some((fav) => fav.name.toLowerCase() === category.name.toLowerCase());
+  };
 
   const getCurrentModeCategories = (): VideoCategory[] => {
     if (activeMode === 'video-count' || activeMode === 'time-category') {
@@ -541,6 +601,57 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
       {limitsSettings.isLimitsEnabled && (
         <>
+          {/* Favorites Section - Only show when favorites exist */}
+          {hasFavorites && (
+            <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
+              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-100/50 px-6 py-6">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="p-2 bg-white rounded-md shadow-sm border border-amber-100">
+                      <Star className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-sm font-bold text-gray-900 leading-tight">
+                        Favorites
+                      </CardTitle>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {(limitsSettings.favoriteCategories || []).length} saved categories
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLoadFavorites}
+                      className="h-8 px-3 text-xs bg-gradient-to-r from-amber-50 to-yellow-50 backdrop-blur-sm border-amber-200 hover:bg-gradient-to-r hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
+                    >
+                      <Zap className="w-3 h-3 mr-1.5" />
+                      Load All
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <CardContent className="pt-3 px-4 pb-3 bg-gradient-to-b from-white to-amber-50/20">
+                <div className="flex flex-wrap gap-2">
+                  {(limitsSettings.favoriteCategories || []).map((favorite) => (
+                    <div
+                      key={favorite.id}
+                      className="flex items-center gap-1.5 bg-gradient-to-r from-white to-amber-50/50 border border-amber-200/60 rounded-lg px-2.5 py-1.5 shadow-sm"
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: favorite.color }}
+                      />
+                      <span className="text-xs font-medium text-gray-700">{favorite.name}</span>
+                      <span className="text-[10px] text-gray-500">
+                        ({favorite.dailyLimitCount})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Mode 1: Video Count by Category */}
           {activeMode === 'video-count' && (
             <>
@@ -611,147 +722,149 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         </CardTitle>
                         <p className="text-xs text-gray-600 mt-0.5">Manage category limits</p>
                       </div>
-                      <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
-                        <DialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            className="bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 px-3 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out border-0 ml-3 flex-shrink-0"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Add
-                          </Button>
-                        </DialogTrigger>
+                      <div className="ml-3 flex-shrink-0">
+                        <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
+                          <DialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              className="bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 px-3 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out border-0"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Add
+                            </Button>
+                          </DialogTrigger>
 
-                        <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
-                          <DialogHeader>
-                            <DialogTitle className="text-base">Add Category</DialogTitle>
-                            <DialogDescription className="text-xs">
-                              Create a new video category to limit your YouTube watching.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <Label htmlFor="category-name" className="mb-1 text-xs">
-                              Category Name
-                            </Label>
-                            <Input
-                              id="category-name"
-                              value={newCategory.name}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                setNewCategory({ ...newCategory, name: e.target.value });
-                                if (validationErrors.name) {
-                                  setValidationErrors({ ...validationErrors, name: undefined });
-                                }
-                              }}
-                              placeholder="e.g., Education, Entertainment"
-                              className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                                validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
-                              }`}
-                            />
-                            {validationErrors.name && (
-                              <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
-                            )}
-                            <div>
-                              <Label htmlFor="daily-limit" className="mb-1 text-xs">
-                                Daily Video Limit
+                          <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
+                            <DialogHeader>
+                              <DialogTitle className="text-base">Add Category</DialogTitle>
+                              <DialogDescription className="text-xs">
+                                Create a new video category to limit your YouTube watching.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <Label htmlFor="category-name" className="mb-1 text-xs">
+                                Category Name
                               </Label>
                               <Input
-                                id="daily-limit"
-                                type="number"
-                                min="1"
-                                max="100"
-                                value={newCategory.dailyLimitCount}
+                                id="category-name"
+                                value={newCategory.name}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  setNewCategory({
-                                    ...newCategory,
-                                    dailyLimitCount: Number.parseInt(e.target.value) || 5,
-                                  });
-                                  if (validationErrors.dailyLimitCount) {
-                                    setValidationErrors({
-                                      ...validationErrors,
-                                      dailyLimitCount: undefined,
-                                    });
+                                  setNewCategory({ ...newCategory, name: e.target.value });
+                                  if (validationErrors.name) {
+                                    setValidationErrors({ ...validationErrors, name: undefined });
                                   }
                                 }}
+                                placeholder="e.g., Education, Entertainment"
                                 className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                                  validationErrors.dailyLimitCount
-                                    ? 'border-red-500 ring-1 ring-red-500'
-                                    : ''
+                                  validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
                                 }`}
                               />
-                              {validationErrors.dailyLimitCount ? (
-                                <p className="text-xs text-red-500 mt-1">
-                                  {validationErrors.dailyLimitCount}
-                                </p>
-                              ) : (
-                                <p className="text-[10px] text-gray-500 mt-1">
-                                  Maximum videos per day
-                                </p>
+                              {validationErrors.name && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
                               )}
-                            </div>
-                            <ColorPicker
-                              label="Color"
-                              value={newCategory.color}
-                              onChange={(color: string) =>
-                                setNewCategory({ ...newCategory, color })
-                              }
-                            />
-                            <div className="space-y-2">
-                              <Label className="text-xs">Quick Add</Label>
-                              <div className="flex flex-wrap gap-1">
-                                {PRESET_CATEGORIES.map((preset) => {
-                                  const isSelected = selectedPresets.includes(preset.name);
-                                  const isAlreadyAdded = currentModeCategories.some(
-                                    (cat: VideoCategory) => cat.name === preset.name
-                                  );
+                              <div>
+                                <Label htmlFor="daily-limit" className="mb-1 text-xs">
+                                  Daily Video Limit
+                                </Label>
+                                <Input
+                                  id="daily-limit"
+                                  type="number"
+                                  min="1"
+                                  max="100"
+                                  value={newCategory.dailyLimitCount}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    setNewCategory({
+                                      ...newCategory,
+                                      dailyLimitCount: Number.parseInt(e.target.value) || 5,
+                                    });
+                                    if (validationErrors.dailyLimitCount) {
+                                      setValidationErrors({
+                                        ...validationErrors,
+                                        dailyLimitCount: undefined,
+                                      });
+                                    }
+                                  }}
+                                  className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                                    validationErrors.dailyLimitCount
+                                      ? 'border-red-500 ring-1 ring-red-500'
+                                      : ''
+                                  }`}
+                                />
+                                {validationErrors.dailyLimitCount ? (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {validationErrors.dailyLimitCount}
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-gray-500 mt-1">
+                                    Maximum videos per day
+                                  </p>
+                                )}
+                              </div>
+                              <ColorPicker
+                                label="Color"
+                                value={newCategory.color}
+                                onChange={(color: string) =>
+                                  setNewCategory({ ...newCategory, color })
+                                }
+                              />
+                              <div className="space-y-2">
+                                <Label className="text-xs">Quick Add</Label>
+                                <div className="flex flex-wrap gap-1">
+                                  {PRESET_CATEGORIES.map((preset) => {
+                                    const isSelected = selectedPresets.includes(preset.name);
+                                    const isAlreadyAdded = currentModeCategories.some(
+                                      (cat: VideoCategory) => cat.name === preset.name
+                                    );
 
-                                  return (
-                                    <Button
-                                      key={preset.name}
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleTogglePreset(preset.name)}
-                                      disabled={isAlreadyAdded}
-                                      className={`h-6 px-2 text-xs transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 ${
-                                        isSelected
-                                          ? 'border-red-500 border-2 bg-red-50 text-red-700 shadow-md scale-105'
-                                          : 'hover:border-red-300 hover:bg-red-25 hover:shadow-sm'
-                                      } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
-                                    >
-                                      <div
-                                        className="w-2 h-2 rounded-full mr-1"
-                                        style={{ backgroundColor: preset.color }}
-                                      />
-                                      {preset.name}
-                                      {isAlreadyAdded && (
-                                        <span className="ml-1 text-[10px]">✓</span>
-                                      )}
-                                    </Button>
-                                  );
-                                })}
+                                    return (
+                                      <Button
+                                        key={preset.name}
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleTogglePreset(preset.name)}
+                                        disabled={isAlreadyAdded}
+                                        className={`h-6 px-2 text-xs transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 ${
+                                          isSelected
+                                            ? 'border-red-500 border-2 bg-red-50 text-red-700 shadow-md scale-105'
+                                            : 'hover:border-red-300 hover:bg-red-25 hover:shadow-sm'
+                                        } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+                                      >
+                                        <div
+                                          className="w-2 h-2 rounded-full mr-1"
+                                          style={{ backgroundColor: preset.color }}
+                                        />
+                                        {preset.name}
+                                        {isAlreadyAdded && (
+                                          <span className="ml-1 text-[10px]">✓</span>
+                                        )}
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={handleAddCategory}
+                                  className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
+                                >
+                                  {selectedPresets.length > 0 && newCategory.name.trim()
+                                    ? `Add Category + ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
+                                    : selectedPresets.length > 0
+                                      ? `Add ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
+                                      : 'Add Category'}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleDialogOpenChange(false)}
+                                  className="h-8 text-xs"
+                                >
+                                  Cancel
+                                </Button>
                               </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={handleAddCategory}
-                                className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
-                              >
-                                {selectedPresets.length > 0 && newCategory.name.trim()
-                                  ? `Add Category + ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
-                                  : selectedPresets.length > 0
-                                    ? `Add ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
-                                    : 'Add Category'}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => handleDialogOpenChange(false)}
-                                className="h-8 text-xs"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -762,9 +875,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         <Hash className="w-10 h-10 opacity-60 text-gray-400" />
                       </div>
                       <p className="text-sm font-medium mb-1 text-gray-700">No categories yet</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 mb-4">
                         Add categories to manage your video limits
                       </p>
+                      {hasFavorites && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleLoadFavorites}
+                          className="h-8 px-3 text-xs bg-gradient-to-r from-amber-50 to-yellow-50 backdrop-blur-sm border-amber-200 hover:bg-gradient-to-r hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
+                        >
+                          <Zap className="w-3 h-3 mr-1.5" />
+                          Load Your Favorites
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -791,6 +915,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                   style={{ backgroundColor: category.color }}
                                 />
                                 <span className="text-sm font-medium">{category.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleCategoryFavorite(category)}
+                                  className="h-5 w-5 p-0 hover:bg-amber-50"
+                                >
+                                  <Star
+                                    className={`w-3 h-3 transition-colors ${
+                                      isCategoryFavorited(category)
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-gray-400 hover:text-amber-400'
+                                    }`}
+                                  />
+                                </Button>
                                 {isExceeded && <AlertCircle className="w-3 h-3 text-red-500" />}
                                 {!category.isActive && (
                                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
@@ -927,144 +1065,151 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         <p className="text-xs text-gray-600 mt-0.5">Set time limits per category</p>
                       </div>
                     </div>
-                    <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          className="bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 px-3 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out border-0 ml-3 flex-shrink-0"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add
-                        </Button>
-                      </DialogTrigger>
+                    <div className="ml-3 flex-shrink-0">
+                      <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            className="bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 px-3 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out border-0"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add
+                          </Button>
+                        </DialogTrigger>
 
-                      <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
-                        <DialogHeader>
-                          <DialogTitle className="text-base">Add New Time Category</DialogTitle>
-                          <DialogDescription className="text-xs">
-                            Create a new category with time-based limits for your YouTube watching.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <Label htmlFor="category-name" className="mb-1 text-xs">
-                            Category Name
-                          </Label>
-                          <Input
-                            id="category-name"
-                            value={newCategory.name}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                              setNewCategory({ ...newCategory, name: e.target.value });
-                              if (validationErrors.name) {
-                                setValidationErrors({ ...validationErrors, name: undefined });
-                              }
-                            }}
-                            placeholder="e.g., Education, Entertainment"
-                            className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                              validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
-                            }`}
-                          />
-                          {validationErrors.name && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
-                          )}
-                          <div>
-                            <Label htmlFor="daily-time-limit" className="mb-1 text-xs">
-                              Daily Time Limit (minutes)
+                        <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
+                          <DialogHeader>
+                            <DialogTitle className="text-base">Add New Time Category</DialogTitle>
+                            <DialogDescription className="text-xs">
+                              Create a new category with time-based limits for your YouTube
+                              watching.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <Label htmlFor="category-name" className="mb-1 text-xs">
+                              Category Name
                             </Label>
                             <Input
-                              id="daily-time-limit"
-                              type="number"
-                              min="5"
-                              max="480"
-                              value={newCategory.dailyTimeLimit}
+                              id="category-name"
+                              value={newCategory.name}
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                setNewCategory({
-                                  ...newCategory,
-                                  dailyTimeLimit: Number.parseInt(e.target.value) || 60,
-                                });
-                                if (validationErrors.dailyTimeLimit) {
-                                  setValidationErrors({
-                                    ...validationErrors,
-                                    dailyTimeLimit: undefined,
-                                  });
+                                setNewCategory({ ...newCategory, name: e.target.value });
+                                if (validationErrors.name) {
+                                  setValidationErrors({ ...validationErrors, name: undefined });
                                 }
                               }}
+                              placeholder="e.g., Education, Entertainment"
                               className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                                validationErrors.dailyTimeLimit
-                                  ? 'border-red-500 ring-1 ring-red-500'
-                                  : ''
+                                validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
                               }`}
                             />
-                            {validationErrors.dailyTimeLimit ? (
-                              <p className="text-xs text-red-500 mt-1">
-                                {validationErrors.dailyTimeLimit}
-                              </p>
-                            ) : (
-                              <p className="text-[10px] text-gray-500 mt-1">
-                                Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)}
-                                )
-                              </p>
+                            {validationErrors.name && (
+                              <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
                             )}
-                          </div>
-                          <ColorPicker
-                            label="Color"
-                            value={newCategory.color}
-                            onChange={(color: string) => setNewCategory({ ...newCategory, color })}
-                          />
-                          <div className="space-y-2">
-                            <Label className="text-xs">Quick Add</Label>
-                            <div className="flex flex-wrap gap-1">
-                              {PRESET_CATEGORIES.map((preset) => {
-                                const isSelected = selectedPresets.includes(preset.name);
-                                const isAlreadyAdded = currentModeCategories.some(
-                                  (cat: VideoCategory) => cat.name === preset.name
-                                );
+                            <div>
+                              <Label htmlFor="daily-time-limit" className="mb-1 text-xs">
+                                Daily Time Limit (minutes)
+                              </Label>
+                              <Input
+                                id="daily-time-limit"
+                                type="number"
+                                min="5"
+                                max="480"
+                                value={newCategory.dailyTimeLimit}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                  setNewCategory({
+                                    ...newCategory,
+                                    dailyTimeLimit: Number.parseInt(e.target.value) || 60,
+                                  });
+                                  if (validationErrors.dailyTimeLimit) {
+                                    setValidationErrors({
+                                      ...validationErrors,
+                                      dailyTimeLimit: undefined,
+                                    });
+                                  }
+                                }}
+                                className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                                  validationErrors.dailyTimeLimit
+                                    ? 'border-red-500 ring-1 ring-red-500'
+                                    : ''
+                                }`}
+                              />
+                              {validationErrors.dailyTimeLimit ? (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {validationErrors.dailyTimeLimit}
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                  Maximum watch time per day (
+                                  {formatTime(newCategory.dailyTimeLimit)})
+                                </p>
+                              )}
+                            </div>
+                            <ColorPicker
+                              label="Color"
+                              value={newCategory.color}
+                              onChange={(color: string) =>
+                                setNewCategory({ ...newCategory, color })
+                              }
+                            />
+                            <div className="space-y-2">
+                              <Label className="text-xs">Quick Add</Label>
+                              <div className="flex flex-wrap gap-1">
+                                {PRESET_CATEGORIES.map((preset) => {
+                                  const isSelected = selectedPresets.includes(preset.name);
+                                  const isAlreadyAdded = currentModeCategories.some(
+                                    (cat: VideoCategory) => cat.name === preset.name
+                                  );
 
-                                return (
-                                  <Button
-                                    key={preset.name}
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleTogglePreset(preset.name)}
-                                    disabled={isAlreadyAdded}
-                                    className={`h-6 px-2 text-xs transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 ${
-                                      isSelected
-                                        ? 'border-red-500 border-2 bg-red-50 text-red-700 shadow-md scale-105'
-                                        : 'hover:border-red-300 hover:bg-red-25 hover:shadow-sm'
-                                    } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
-                                  >
-                                    <div
-                                      className="w-2 h-2 rounded-full mr-1"
-                                      style={{ backgroundColor: preset.color }}
-                                    />
-                                    {preset.name}
-                                    {isAlreadyAdded && <span className="ml-1 text-[10px]">✓</span>}
-                                  </Button>
-                                );
-                              })}
+                                  return (
+                                    <Button
+                                      key={preset.name}
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleTogglePreset(preset.name)}
+                                      disabled={isAlreadyAdded}
+                                      className={`h-6 px-2 text-xs transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 ${
+                                        isSelected
+                                          ? 'border-red-500 border-2 bg-red-50 text-red-700 shadow-md scale-105'
+                                          : 'hover:border-red-300 hover:bg-red-25 hover:shadow-sm'
+                                      } ${isAlreadyAdded ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+                                    >
+                                      <div
+                                        className="w-2 h-2 rounded-full mr-1"
+                                        style={{ backgroundColor: preset.color }}
+                                      />
+                                      {preset.name}
+                                      {isAlreadyAdded && (
+                                        <span className="ml-1 text-[10px]">✓</span>
+                                      )}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={handleAddCategory}
+                                className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
+                              >
+                                {selectedPresets.length > 0 && newCategory.name.trim()
+                                  ? `Add Category + ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
+                                  : selectedPresets.length > 0
+                                    ? `Add ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
+                                    : 'Add Category'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleDialogOpenChange(false)}
+                                className="h-8 text-xs"
+                              >
+                                Cancel
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={handleAddCategory}
-                              className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
-                            >
-                              {selectedPresets.length > 0 && newCategory.name.trim()
-                                ? `Add Category + ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
-                                : selectedPresets.length > 0
-                                  ? `Add ${selectedPresets.length} Preset${selectedPresets.length > 1 ? 's' : ''}`
-                                  : 'Add Category'}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleDialogOpenChange(false)}
-                              className="h-8 text-xs"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </div>
                 </div>
                 <CardContent className="pt-2 pb-4 px-4 bg-gradient-to-b from-white to-gray-50/30">
@@ -1076,9 +1221,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       <p className="text-sm font-medium mb-1 text-gray-700">
                         No time categories created yet
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 mb-4">
                         Add categories to start managing your time limits
                       </p>
+                      {hasFavorites && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleLoadFavorites}
+                          className="h-8 px-3 text-xs bg-gradient-to-r from-amber-50 to-yellow-50 backdrop-blur-sm border-amber-200 hover:bg-gradient-to-r hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
+                        >
+                          <Zap className="w-3 h-3 mr-1.5" />
+                          Load Your Favorites
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1101,6 +1257,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                   style={{ backgroundColor: category.color }}
                                 />
                                 <span className="text-sm font-medium">{category.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleCategoryFavorite(category)}
+                                  className="h-5 w-5 p-0 hover:bg-amber-50"
+                                >
+                                  <Star
+                                    className={`w-3 h-3 transition-colors ${
+                                      isCategoryFavorited(category)
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-gray-400 hover:text-amber-400'
+                                    }`}
+                                  />
+                                </Button>
                                 {isExceeded && <AlertCircle className="w-3 h-3 text-red-500" />}
                                 {!category.isActive && (
                                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
