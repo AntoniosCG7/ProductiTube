@@ -83,6 +83,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const [resetConfirmation, setResetConfirmation] = useState<{
     isOpen: boolean;
   } | null>(null);
+  const [favoriteConfirmation, setFavoriteConfirmation] = useState<{
+    category: VideoCategory;
+    action: 'add' | 'remove';
+    isOpen: boolean;
+  } | null>(null);
 
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
 
@@ -109,13 +114,26 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     });
   };
 
-  const toggleCategoryFavorite = (category: VideoCategory) => {
+  const handleFavoriteClick = (category: VideoCategory) => {
     const existingFavorites = limitsSettings.favoriteCategories || [];
     const isFavorited = existingFavorites.some(
       (fav) => fav.name.toLowerCase() === category.name.toLowerCase()
     );
 
-    if (isFavorited) {
+    setFavoriteConfirmation({
+      category,
+      action: isFavorited ? 'remove' : 'add',
+      isOpen: true,
+    });
+  };
+
+  const confirmFavoriteAction = () => {
+    if (!favoriteConfirmation) return;
+
+    const { category, action } = favoriteConfirmation;
+    const existingFavorites = limitsSettings.favoriteCategories || [];
+
+    if (action === 'remove') {
       const updatedFavorites = existingFavorites.filter(
         (fav) => fav.name.toLowerCase() !== category.name.toLowerCase()
       );
@@ -135,6 +153,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         favoriteCategories: [...existingFavorites, newFavorite],
       });
     }
+
+    setFavoriteConfirmation(null);
+  };
+
+  const cancelFavoriteAction = () => {
+    setFavoriteConfirmation(null);
   };
 
   const isCategoryFavorited = (category: VideoCategory) => {
@@ -918,7 +942,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => toggleCategoryFavorite(category)}
+                                  onClick={() => handleFavoriteClick(category)}
                                   className="h-5 w-5 p-0 hover:bg-amber-50"
                                 >
                                   <Star
@@ -1260,7 +1284,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => toggleCategoryFavorite(category)}
+                                  onClick={() => handleFavoriteClick(category)}
                                   className="h-5 w-5 p-0 hover:bg-amber-50"
                                 >
                                   <Star
@@ -1765,6 +1789,62 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               Reset All Data
             </Button>
             <Button variant="outline" onClick={cancelReset} className="h-9 text-sm">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Favorite Category Confirmation Dialog */}
+      <Dialog
+        open={favoriteConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelFavoriteAction()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <Star className="w-5 h-5 text-amber-500" />
+              {favoriteConfirmation?.action === 'add'
+                ? 'Add to Favorites'
+                : 'Remove from Favorites'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              {favoriteConfirmation?.action === 'add' ? (
+                <>
+                  Are you sure you want to add{' '}
+                  <strong>&quot;{favoriteConfirmation?.category?.name}&quot;</strong> to your
+                  favorites?
+                  <span className="block mt-2 text-blue-600 font-medium">
+                    This will save the category with its current limit settings for quick access
+                    later.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Are you sure you want to remove{' '}
+                  <strong>&quot;{favoriteConfirmation?.category?.name}&quot;</strong> from your
+                  favorites?
+                  <span className="block mt-2 text-amber-600 font-medium">
+                    You can always add it back to favorites later if needed.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmFavoriteAction}
+              className={`flex-1 h-9 text-sm ${
+                favoriteConfirmation?.action === 'add'
+                  ? 'bg-blue-500 hover:bg-blue-600'
+                  : 'bg-amber-500 hover:bg-amber-600'
+              }`}
+            >
+              {favoriteConfirmation?.action === 'add'
+                ? 'Add to Favorites'
+                : 'Remove from Favorites'}
+            </Button>
+            <Button variant="outline" onClick={cancelFavoriteAction} className="h-9 text-sm">
               Cancel
             </Button>
           </div>
