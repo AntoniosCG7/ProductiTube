@@ -93,6 +93,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     favoritesToAdd: FavoriteCategory[];
     existingCount: number;
   } | null>(null);
+  const [selectedFavorites, setSelectedFavorites] = useState<string[]>([]);
+  const [editingFavorite, setEditingFavorite] = useState<FavoriteCategory | null>(null);
+  const [deleteFavoriteConfirmation, setDeleteFavoriteConfirmation] = useState<{
+    favorite: FavoriteCategory;
+    isOpen: boolean;
+  } | null>(null);
 
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
 
@@ -118,6 +124,145 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       favoritesToAdd,
       existingCount: currentModeCategories.length,
     });
+  };
+
+  const handleLoadSelectedFavorites = () => {
+    if (selectedFavorites.length === 0) return;
+
+    const favorites = limitsSettings.favoriteCategories || [];
+    const selectedFavoriteObjects = favorites.filter((fav) => selectedFavorites.includes(fav.id));
+
+    const currentModeCategories = getCurrentModeCategories();
+    const existingCategoryNames = currentModeCategories.map((cat: VideoCategory) =>
+      cat.name.toLowerCase()
+    );
+
+    const favoritesToAdd = selectedFavoriteObjects.filter(
+      (fav) => !existingCategoryNames.includes(fav.name.toLowerCase())
+    );
+
+    if (favoritesToAdd.length === 0) {
+      return;
+    }
+
+    setLoadFavoritesConfirmation({
+      isOpen: true,
+      favoritesToAdd,
+      existingCount: currentModeCategories.length,
+    });
+  };
+
+  const handleSelectFavorite = (favoriteId: string) => {
+    setSelectedFavorites((prev) =>
+      prev.includes(favoriteId) ? prev.filter((id) => id !== favoriteId) : [...prev, favoriteId]
+    );
+  };
+
+  const handleSelectAllFavorites = () => {
+    const favorites = limitsSettings.favoriteCategories || [];
+    setSelectedFavorites(favorites.map((fav) => fav.id));
+  };
+
+  const handleDeselectAllFavorites = () => {
+    setSelectedFavorites([]);
+  };
+
+  const handleEditFavorite = (favorite: FavoriteCategory) => {
+    setEditingFavorite(favorite);
+    setNewCategory({
+      name: favorite.name,
+      color: favorite.color,
+      dailyLimitCount: favorite.dailyLimitCount,
+      dailyTimeLimit: favorite.dailyTimeLimit || 60,
+    });
+  };
+
+  const handleUpdateFavorite = () => {
+    if (!editingFavorite) return;
+
+    if (!validateForm()) {
+      return;
+    }
+
+    const existingFavorites = limitsSettings.favoriteCategories || [];
+    const updatedFavorites = existingFavorites.map((fav) =>
+      fav.id === editingFavorite.id
+        ? {
+            ...fav,
+            name: newCategory.name.trim(),
+            color: newCategory.color,
+            dailyLimitCount: newCategory.dailyLimitCount,
+            dailyTimeLimit: newCategory.dailyTimeLimit,
+          }
+        : fav
+    );
+
+    const currentModeCategories = getCurrentModeCategories();
+    const updatedCategories = currentModeCategories.map((cat: VideoCategory) => {
+      if (cat.name.toLowerCase() === editingFavorite.name.toLowerCase()) {
+        return {
+          ...cat,
+          name: newCategory.name.trim(),
+          color: newCategory.color,
+          dailyLimitCount: newCategory.dailyLimitCount,
+          dailyTimeLimit: newCategory.dailyTimeLimit,
+        };
+      }
+      return cat;
+    });
+
+    updateLimitsSettings({
+      favoriteCategories: updatedFavorites,
+      categories: {
+        ...limitsSettings.categories,
+        [activeMode]: updatedCategories,
+      },
+    });
+
+    setEditingFavorite(null);
+    setNewCategory({
+      name: '',
+      color: '#10b981',
+      dailyLimitCount: 5,
+      dailyTimeLimit: 60,
+    });
+    clearValidationErrors();
+  };
+
+  const handleDeleteFavoriteClick = (favorite: FavoriteCategory) => {
+    setDeleteFavoriteConfirmation({
+      favorite,
+      isOpen: true,
+    });
+  };
+
+  const confirmDeleteFavorite = () => {
+    if (!deleteFavoriteConfirmation) return;
+
+    const existingFavorites = limitsSettings.favoriteCategories || [];
+    const updatedFavorites = existingFavorites.filter(
+      (fav) => fav.id !== deleteFavoriteConfirmation.favorite.id
+    );
+
+    updateLimitsSettings({
+      favoriteCategories: updatedFavorites,
+    });
+
+    setSelectedFavorites((prev) =>
+      prev.filter((id) => id !== deleteFavoriteConfirmation.favorite.id)
+    );
+    setDeleteFavoriteConfirmation(null);
+  };
+
+  const cancelDeleteFavorite = () => {
+    setDeleteFavoriteConfirmation(null);
+  };
+
+  const handleFavoriteEditDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setEditingFavorite(null);
+      clearValidationErrors();
+    }
   };
 
   const confirmLoadFavorites = () => {
@@ -677,6 +822,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       </CardTitle>
                       <p className="text-xs text-gray-600 mt-0.5">
                         {(limitsSettings.favoriteCategories || []).length} saved categories
+                        {selectedFavorites.length > 0}
                       </p>
                     </div>
                     <Button
@@ -692,22 +838,90 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 </div>
               </div>
               <CardContent className="pt-3 px-4 pb-3 bg-gradient-to-b from-white to-amber-50/20">
-                <div className="flex flex-wrap gap-2">
-                  {(limitsSettings.favoriteCategories || []).map((favorite) => (
-                    <div
-                      key={favorite.id}
-                      className="flex items-center gap-1.5 bg-gradient-to-r from-white to-amber-50/50 border border-amber-200/60 rounded-lg px-2.5 py-1.5 shadow-sm"
-                    >
-                      <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: favorite.color }}
-                      />
-                      <span className="text-xs font-medium text-gray-700">{favorite.name}</span>
-                      <span className="text-[10px] text-gray-500">
-                        ({favorite.dailyLimitCount})
-                      </span>
+                <div className="space-y-4">
+                  {/* Selection Controls */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSelectAllFavorites}
+                        className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        Select All
+                      </Button>
+                      <span className="text-gray-400">•</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDeselectAllFavorites}
+                        className="h-6 px-2 text-xs text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                      >
+                        Deselect All
+                      </Button>
                     </div>
-                  ))}
+                    {selectedFavorites.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLoadSelectedFavorites}
+                        className="h-6 px-2 text-xs bg-gradient-to-r from-blue-50 to-indigo-50 backdrop-blur-sm border-blue-200 hover:bg-gradient-to-r hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 hover:shadow-md transition-all duration-200"
+                      >
+                        <Zap className="w-3 h-3 mr-1.5" />
+                        Load Selected ({selectedFavorites.length})
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Favorite Categories */}
+                  <div className="space-y-2">
+                    {(limitsSettings.favoriteCategories || []).map((favorite) => (
+                      <div
+                        key={favorite.id}
+                        className={`flex items-center gap-2 bg-gradient-to-r from-white to-amber-50/50 border rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-all duration-200 ${
+                          selectedFavorites.includes(favorite.id)
+                            ? 'border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50'
+                            : 'border-amber-200/60'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedFavorites.includes(favorite.id)}
+                          onChange={() => handleSelectFavorite(favorite.id)}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded"
+                        />
+                        <div
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: favorite.color }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium text-gray-700">{favorite.name}</span>
+                          <span className="text-[10px] text-gray-500 ml-1">
+                            ({favorite.dailyLimitCount}{' '}
+                            {activeMode === 'time-category' ? `• ${favorite.dailyTimeLimit}m` : ''})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditFavorite(favorite)}
+                            className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteFavoriteClick(favorite)}
+                            className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1954,6 +2168,158 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               Load Categories
             </Button>
             <Button variant="outline" onClick={cancelLoadFavorites} className="h-9 text-sm">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Favorite Dialog */}
+      <Dialog open={!!editingFavorite} onOpenChange={handleFavoriteEditDialogOpenChange}>
+        <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
+          <DialogHeader>
+            <DialogTitle className="text-base">Edit Favorite Category</DialogTitle>
+            <DialogDescription className="text-xs">
+              Modify the settings for this favorite category.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-favorite-name" className="mb-1 text-xs">
+                Category Name
+              </Label>
+              <Input
+                id="edit-favorite-name"
+                value={newCategory.name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setNewCategory({ ...newCategory, name: e.target.value });
+                  if (validationErrors.name) {
+                    setValidationErrors({ ...validationErrors, name: undefined });
+                  }
+                }}
+                className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                  validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
+                }`}
+              />
+              {validationErrors.name && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="edit-favorite-limit" className="mb-1 text-xs">
+                Daily Video Limit
+              </Label>
+              <Input
+                id="edit-favorite-limit"
+                type="number"
+                min="1"
+                max="100"
+                value={newCategory.dailyLimitCount}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setNewCategory({
+                    ...newCategory,
+                    dailyLimitCount: Number.parseInt(e.target.value) || 5,
+                  });
+                  if (validationErrors.dailyLimitCount) {
+                    setValidationErrors({ ...validationErrors, dailyLimitCount: undefined });
+                  }
+                }}
+                className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                  validationErrors.dailyLimitCount ? 'border-red-500 ring-1 ring-red-500' : ''
+                }`}
+              />
+              {validationErrors.dailyLimitCount ? (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.dailyLimitCount}</p>
+              ) : (
+                <p className="text-[10px] text-gray-500 mt-1">Maximum videos per day</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="edit-favorite-time-limit" className="mb-1 text-xs">
+                Daily Time Limit (minutes)
+              </Label>
+              <Input
+                id="edit-favorite-time-limit"
+                type="number"
+                min="5"
+                max="480"
+                value={newCategory.dailyTimeLimit}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setNewCategory({
+                    ...newCategory,
+                    dailyTimeLimit: Number.parseInt(e.target.value) || 60,
+                  });
+                  if (validationErrors.dailyTimeLimit) {
+                    setValidationErrors({ ...validationErrors, dailyTimeLimit: undefined });
+                  }
+                }}
+                className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                  validationErrors.dailyTimeLimit ? 'border-red-500 ring-1 ring-red-500' : ''
+                }`}
+              />
+              {validationErrors.dailyTimeLimit ? (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.dailyTimeLimit}</p>
+              ) : (
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)})
+                </p>
+              )}
+            </div>
+
+            <ColorPicker
+              label="Color"
+              value={newCategory.color}
+              onChange={(color: string) => setNewCategory({ ...newCategory, color })}
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={handleUpdateFavorite}
+                className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
+              >
+                Update Favorite
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleFavoriteEditDialogOpenChange(false)}
+                className="h-8 text-xs"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Favorite Confirmation Dialog */}
+      <Dialog
+        open={deleteFavoriteConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelDeleteFavorite()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              Delete Favorite Category
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              Are you sure you want to delete the favorite category{' '}
+              <strong>&quot;{deleteFavoriteConfirmation?.favorite?.name}&quot;</strong>?
+              <span className="block mt-2 text-red-600 font-medium">
+                This will permanently remove it from your favorites. You can always add it back
+                later if needed.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmDeleteFavorite}
+              className="flex-1 bg-red-500 hover:bg-red-600 h-9 text-sm"
+            >
+              Delete Favorite
+            </Button>
+            <Button variant="outline" onClick={cancelDeleteFavorite} className="h-9 text-sm">
               Cancel
             </Button>
           </div>
