@@ -361,17 +361,37 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 100) return 'bg-red-500';
+    if (percentage >= 90) return 'bg-orange-500';
     if (percentage >= 80) return 'bg-yellow-500';
+    if (percentage >= 70) return 'bg-amber-500';
+    if (percentage >= 60) return 'bg-lime-500';
+    if (percentage >= 50) return 'bg-green-500';
+    if (percentage >= 40) return 'bg-emerald-500';
     return 'bg-green-500';
   };
 
   const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+    const roundedMinutes = Math.round(minutes * 100) / 100;
+    const hours = Math.floor(roundedMinutes / 60);
+    const mins = roundedMinutes % 60;
+
     if (hours > 0) {
-      return `${hours}h ${mins}m`;
+      if (mins === 0) {
+        return `${hours}h`;
+      } else if (mins === Math.floor(mins)) {
+        return `${hours}h ${Math.floor(mins)}m`;
+      } else {
+        return `${hours}h ${mins.toFixed(2)}m`;
+      }
     }
-    return `${mins}m`;
+
+    if (roundedMinutes === 0) {
+      return '0m';
+    } else if (roundedMinutes === Math.floor(roundedMinutes)) {
+      return `${Math.floor(roundedMinutes)}m`;
+    } else {
+      return `${roundedMinutes.toFixed(2)}m`;
+    }
   };
 
   const validateForm = () => {
