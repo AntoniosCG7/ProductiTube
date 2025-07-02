@@ -897,8 +897,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         <div className="flex-1 min-w-0">
                           <span className="text-xs font-medium text-gray-700">{favorite.name}</span>
                           <span className="text-[10px] text-gray-500 ml-1">
-                            ({favorite.dailyLimitCount}{' '}
-                            {activeMode === 'time-category' ? `• ${favorite.dailyTimeLimit}m` : ''})
+                            ({favorite.dailyLimitCount} • {favorite.dailyTimeLimit || 60}m)
                           </span>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
