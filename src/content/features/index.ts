@@ -77,33 +77,21 @@ function watchYouTubeNavigation(onNavigate: () => void) {
 
 export const initializeFeatures = async () => {
   try {
-    const [settingsData, limitsData] = await Promise.all([
-      chrome.storage.sync.get(SETTINGS_STORAGE_KEY),
-      chrome.storage.sync.get(LIMITS_STORAGE_KEY),
-    ]);
-
+    const settingsData = await chrome.storage.sync.get(SETTINGS_STORAGE_KEY);
     const settings = (settingsData[SETTINGS_STORAGE_KEY] || {}) as Partial<Settings>;
-    const limitsSettings = limitsData[LIMITS_STORAGE_KEY] || {};
 
-    console.debug('Initializing features with settings:', settings);
-    console.debug('Initializing with limits settings:', limitsSettings);
-
-    // Initialize regular features and store cleanup functions
     Object.entries(featureInitializers).forEach(([key, initializer]) => {
       const settingKey = key as keyof Settings;
       const enabled = settings[settingKey] ?? false;
 
-      // Clean up previous instance if it exists
       cleanupFunctions.get(settingKey)?.();
 
-      // Initialize feature and store cleanup function if returned
       const cleanup = initializer(enabled);
       if (cleanup) {
         cleanupFunctions.set(settingKey, cleanup);
       }
     });
 
-    // Initialize video limits feature
     if (videoLimitsCleanup) {
       videoLimitsCleanup();
     }
@@ -119,7 +107,7 @@ export const initializeFeatures = async () => {
         const initializer = featureInitializers[key];
 
         if (initializer) {
-          cleanupFunctions.get(key)?.(); // Clean up old observer
+          cleanupFunctions.get(key)?.();
 
           const cleanup = initializer(enabled);
           if (cleanup) {
@@ -129,7 +117,6 @@ export const initializeFeatures = async () => {
       });
     });
 
-    // Listen for settings changes from the storage
     chrome.storage.onChanged.addListener((changes) => {
       if (changes[SETTINGS_STORAGE_KEY]) {
         const newSettings = changes[SETTINGS_STORAGE_KEY].newValue || {};
@@ -138,10 +125,8 @@ export const initializeFeatures = async () => {
           const settingKey = key as keyof Settings;
           const newValue = newSettings[settingKey] ?? false;
 
-          // Clean up previous instance
           cleanupFunctions.get(settingKey)?.();
 
-          // Initialize with new value and store cleanup function
           const cleanup = initializer(newValue);
           if (cleanup) {
             cleanupFunctions.set(settingKey, cleanup);
@@ -149,16 +134,21 @@ export const initializeFeatures = async () => {
         });
       }
 
-      // Reinitialize limits feature when limits settings change
+      // Only reinitialize limits feature when isLimitsEnabled changes, not on category edits
       if (changes[LIMITS_STORAGE_KEY]) {
-        console.debug('Limits settings changed, reinitializing video limits');
-        if (videoLimitsCleanup) {
-          videoLimitsCleanup();
+        const oldLimitsSettings = changes[LIMITS_STORAGE_KEY].oldValue || {};
+        const newLimitsSettings = changes[LIMITS_STORAGE_KEY].newValue || {};
+
+        // Only reinitialize if the enabled state actually changed
+        if (oldLimitsSettings.isLimitsEnabled !== newLimitsSettings.isLimitsEnabled) {
+          if (videoLimitsCleanup) {
+            videoLimitsCleanup();
+          }
+          videoLimitsCleanup = initializeVideoLimits();
         }
-        videoLimitsCleanup = initializeVideoLimits();
       }
     });
   } catch (error) {
-    console.error('Failed to initialize features:', error);
+    console.error('❌ [ProductiTube] Failed to initialize features:', error);
   }
 };
