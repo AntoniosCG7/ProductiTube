@@ -8,7 +8,6 @@ export const updateContentScript = async (tabId: number, settings: Settings): Pr
     });
 
     if (!response) {
-      console.warn('No response from content script');
       return;
     }
 

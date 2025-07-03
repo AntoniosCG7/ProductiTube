@@ -57,19 +57,16 @@ class StorageRateTracker {
     this.operationCount++;
     this.lastOperationTime = now;
 
-    // Only enable heavy tracking if we detect intensive usage
     if (!this.heavyUsageMode && this.operationCount >= 15) {
       this.heavyUsageMode = true;
       this.writeOperations = [now];
-      console.log('[ProductiTube] Heavy usage detected, enabling rate limiting');
     }
 
     if (this.heavyUsageMode) {
       this.writeOperations.push(now);
 
-      // Clean up old operations periodically
       if (this.writeOperations.length > 200) {
-        const cutoff = now - 60 * 60 * 1000; // 1 hour
+        const cutoff = now - 60 * 60 * 1000;
         this.writeOperations = this.writeOperations.filter((time) => time > cutoff);
       }
     }
@@ -79,19 +76,17 @@ class StorageRateTracker {
     if (!this.heavyUsageMode) return { limited: false };
 
     const now = Date.now();
-    const cutoff = now - 60 * 1000; // 1 minute
+    const cutoff = now - 60 * 1000;
     const recentWrites = this.writeOperations.filter((time) => time > cutoff).length;
 
     return recentWrites >= 80 ? { limited: true, waitMs: 60 * 1000 } : { limited: false };
   }
 
   getOptimalDebounceMs(): number {
-    // Normal usage: minimal delay
     if (!this.heavyUsageMode) {
       return RATE_LIMIT_CONFIG.baseDebounceMs;
     }
 
-    // Heavy usage: check actual rates
     const now = Date.now();
     const cutoff = now - 60 * 1000;
     const recentWrites = this.writeOperations.filter((time) => time > cutoff).length;
@@ -101,15 +96,12 @@ class StorageRateTracker {
     return RATE_LIMIT_CONFIG.baseDebounceMs;
   }
 
-  // Reset counter periodically to avoid staying in heavy mode forever
   resetIfIdle(): void {
     const now = Date.now();
     if (this.heavyUsageMode && now - this.lastOperationTime > 300000) {
-      // 5 minutes idle
       this.heavyUsageMode = false;
       this.operationCount = 0;
       this.writeOperations = [];
-      console.log('[ProductiTube] Resetting to normal mode after idle period');
     }
   }
 }
@@ -156,13 +148,10 @@ export const useSettings = () => {
       return;
     }
 
-    // Check rate limits
     const rateLimitStatus = rateTracker.isRateLimited();
     if (rateLimitStatus.limited) {
-      console.warn('[ProductiTube] Rate limited, delaying storage write');
       setIsRateLimited(true);
 
-      // Retry after the wait period
       retryTimeoutRef.current = window.setTimeout(() => {
         if (isMountedRef.current) {
           setIsRateLimited(false);
@@ -185,16 +174,12 @@ export const useSettings = () => {
         [SETTINGS_STORAGE_KEY]: finalSettings,
       });
 
-      // Record successful write
       rateTracker.recordWrite();
       pendingUpdatesRef.current = {};
       setError(null);
-
-      console.debug('[ProductiTube] Settings saved successfully');
     } catch (error) {
       console.error('Failed to save settings:', error);
 
-      // Handle quota exceeded errors specifically
       if (error instanceof Error && error.message.includes('QUOTA_BYTES_PER_ITEM')) {
         setError(new Error('Settings data too large. Please contact support.'));
       } else if (
@@ -204,17 +189,15 @@ export const useSettings = () => {
         setError(new Error('Too many changes. Please wait a moment before making more changes.'));
         setIsRateLimited(true);
 
-        // Retry after a longer delay
         retryTimeoutRef.current = window.setTimeout(() => {
           if (isMountedRef.current) {
             setIsRateLimited(false);
             performStorageWrite();
           }
-        }, 60000); // Wait 1 minute
+        }, 60000);
       } else {
         setError(error instanceof Error ? error : new Error('Failed to save settings'));
 
-        // Revert local state on other errors
         fetchSettings();
       }
     }
@@ -225,24 +208,19 @@ export const useSettings = () => {
    */
   const updateSettings = useCallback(
     async (newSettings: Partial<Settings>) => {
-      // Update local state immediately for responsive UI
       setSettings((prev) => ({ ...prev, ...newSettings }));
 
-      // Accumulate pending updates
       pendingUpdatesRef.current = {
         ...pendingUpdatesRef.current,
         ...newSettings,
       };
 
-      // Clear existing timeout
       if (updateTimeoutRef.current) {
         window.clearTimeout(updateTimeoutRef.current);
       }
 
-      // Check if we should reset heavy usage mode due to inactivity
       rateTracker.resetIfIdle();
 
-      // For normal usage (first 15 operations), use minimal delay
       if (!rateTracker['heavyUsageMode']) {
         updateTimeoutRef.current = window.setTimeout(
           performStorageWrite,
@@ -251,19 +229,16 @@ export const useSettings = () => {
         return;
       }
 
-      // Heavy usage mode: use adaptive debouncing
       const debounceMs = rateTracker.getOptimalDebounceMs();
       updateTimeoutRef.current = window.setTimeout(performStorageWrite, debounceMs);
     },
     [performStorageWrite]
   );
 
-  // Initialize settings on mount
   useEffect(() => {
     isMountedRef.current = true;
     fetchSettings();
 
-    // Listen for settings changes from other contexts
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes[SETTINGS_STORAGE_KEY] && isMountedRef.current) {
         setSettings((prev) => ({
@@ -281,7 +256,6 @@ export const useSettings = () => {
     };
   }, [fetchSettings]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (updateTimeoutRef.current) {

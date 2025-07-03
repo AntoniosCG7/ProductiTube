@@ -42,7 +42,6 @@ const checkAndDisableAutoplay = () => {
     autoplayButtons.forEach((button) => {
       const element = button as HTMLElement;
       if (element && element.offsetParent) {
-        console.debug('[ProductiTube] Disabling autoplay button');
         element.click();
       }
     });
@@ -53,12 +52,11 @@ const checkAndDisableAutoplay = () => {
     mobileAutoplayButtons.forEach((button) => {
       const element = button as HTMLElement;
       if (element && element.offsetParent) {
-        console.debug('[ProductiTube] Disabling mobile autoplay button');
         element.click();
       }
     });
   } catch (error) {
-    console.debug('[ProductiTube] Error checking autoplay buttons:', error);
+    console.error('Error checking and disabling autoplay buttons:', error);
   }
 };
 

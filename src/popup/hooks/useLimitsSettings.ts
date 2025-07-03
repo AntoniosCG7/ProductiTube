@@ -109,7 +109,6 @@ export const useLimitsSettings = () => {
           };
 
           await chrome.storage.sync.set({ [LIMITS_STORAGE_KEY]: newSettings });
-          console.debug('Limits settings updated:', newSettings);
 
           try {
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -120,7 +119,7 @@ export const useLimitsSettings = () => {
               });
             }
           } catch (tabError) {
-            console.debug('Could not send message to content script:', tabError);
+            console.error('Could not send message to content script:', tabError);
           }
 
           setError(null);
@@ -143,7 +142,6 @@ export const useLimitsSettings = () => {
     try {
       await chrome.storage.local.remove(USAGE_STORAGE_KEY);
       await fetchLimitsSettings();
-      console.debug('All usage data reset');
     } catch (error) {
       console.error('Failed to reset usage data:', error);
       setError(error instanceof Error ? error : new Error('Failed to reset usage data'));

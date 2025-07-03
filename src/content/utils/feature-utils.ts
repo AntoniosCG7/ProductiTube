@@ -249,7 +249,6 @@ function updateDocumentClasses(): void {
 export function enableFeature(featureName: string): () => void {
   const config = FEATURES[featureName];
   if (!config) {
-    console.warn(`[ProductiTube] Unknown feature: ${featureName}`);
     return () => {};
   }
 
