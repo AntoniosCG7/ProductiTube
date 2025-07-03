@@ -827,8 +827,8 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
       {limitsSettings.isLimitsEnabled && (
         <>
-          {/* Favorites Section - Only show when favorites exist */}
-          {hasFavorites && (
+          {/* Favorites Section - Only show when favorites exist and in category-based modes */}
+          {hasFavorites && (activeMode === 'video-count' || activeMode === 'time-category') && (
             <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
               <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-100/50 px-6 py-6">
                 <div className="flex items-center justify-between w-full">
