@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,6 +47,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const [activeMode, setActiveMode] = useState<LimitMode>(
     limitsSettings.activeMode || 'video-count'
   );
+
+  useEffect(() => {
+    if (limitsSettings.totalDailyTimeLimit !== undefined) {
+      setTotalTimeLimit(limitsSettings.totalDailyTimeLimit);
+    }
+  }, [limitsSettings.totalDailyTimeLimit]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<VideoCategory | null>(null);
   const [newCategory, setNewCategory] = useState({
@@ -56,8 +62,8 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     dailyTimeLimit: 60,
   });
   const [totalTimeLimit, setTotalTimeLimit] = useState(limitsSettings.totalDailyTimeLimit || 60);
-  const [totalTimeWatched, setTotalTimeWatched] = useState(0);
-  const [isTotalLimitSaved, setIsTotalLimitSaved] = useState(false);
+  const totalTimeWatched = limitsSettings.totalTimeWatchedToday || 0;
+  const [isTotalLimitSaved, setIsTotalLimitSaved] = useState(!!limitsSettings.totalDailyTimeLimit);
   const [selectedPresets, setSelectedPresets] = useState<string[]>([]);
   const [validationErrors, setValidationErrors] = useState<{
     name?: string;
@@ -456,12 +462,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
           },
         });
       } else if (mode === 'time-total') {
-        setTotalTimeLimit(60);
-        setTotalTimeWatched(0);
+        setTotalTimeLimit(limitsSettings.totalDailyTimeLimit || 60);
         updateLimitsSettings({
           activeMode: mode,
           isLimitsEnabled: true,
-          totalDailyTimeLimit: 60,
+          totalDailyTimeLimit: limitsSettings.totalDailyTimeLimit || 60,
         });
       }
     } else {
@@ -693,10 +698,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const confirmReset = async () => {
     try {
       await chrome.storage.local.remove('youtube_usage_data');
-
-      if (activeMode === 'time-total') {
-        setTotalTimeWatched(0);
-      }
 
       console.debug('[ProductiTube] All limits reset');
     } catch (error) {
@@ -1652,7 +1653,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setTotalTimeWatched(0)}
+                        onClick={handleResetClick}
                         className="h-8 px-3 text-xs bg-white/80 backdrop-blur-sm border-purple-200 hover:bg-white hover:border-purple-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
                       >
                         <RotateCcw className="w-3 h-3 mr-1.5" />
@@ -1683,7 +1684,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           {totalTimeWatched >= totalTimeLimit ? (
                             <span className="text-red-600 text-xs font-medium flex items-center gap-1">
                               <AlertCircle className="w-4 h-4" />
-                              Time limit exceeded
+                              Time limit reached
                             </span>
                           ) : (
                             <div className="text-xs">
