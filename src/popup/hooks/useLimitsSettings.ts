@@ -74,6 +74,10 @@ export const useLimitsSettings = () => {
           });
         }
 
+        const totalTimeWatched = usage[today]?.['total-time-limit']?.timeWatched || 0;
+
+        mergedSettings.totalTimeWatchedToday = totalTimeWatched;
+
         setLimitsSettings(mergedSettings);
         setError(null);
       }
