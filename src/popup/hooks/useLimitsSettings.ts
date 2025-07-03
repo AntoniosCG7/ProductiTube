@@ -14,7 +14,10 @@ const USAGE_STORAGE_KEY = 'youtube_usage_data';
 
 interface UsageData {
   [date: string]: {
-    [categoryId: string]: number;
+    [categoryId: string]: {
+      videoCount: number;
+      timeWatched: number;
+    };
   };
 }
 
@@ -41,24 +44,21 @@ export const useLimitsSettings = () => {
     try {
       setIsLoading(true);
 
-      // Load both limits settings and usage data
-      const [storedSettings, usageData] = await Promise.all([
+      const [storedSettings, usageDataResult] = await Promise.all([
         chrome.storage.sync.get(LIMITS_STORAGE_KEY),
         chrome.storage.local.get(USAGE_STORAGE_KEY),
       ]);
 
       const settings = storedSettings[LIMITS_STORAGE_KEY] || {};
-      const usage: UsageData = usageData[USAGE_STORAGE_KEY] || {};
+      const usage: UsageData = usageDataResult[USAGE_STORAGE_KEY] || {};
       const today = getTodayString();
 
       if (isMountedRef.current) {
-        // Merge usage data with settings to show current counts
         const mergedSettings = {
           ...defaultLimitsSettings,
           ...settings,
         };
 
-        // Update categories with current usage data
         if (mergedSettings.categories) {
           ['video-count', 'time-category'].forEach((mode) => {
             if (mergedSettings.categories[mode as keyof typeof mergedSettings.categories]) {
@@ -66,8 +66,8 @@ export const useLimitsSettings = () => {
                 mergedSettings.categories[mode as keyof typeof mergedSettings.categories].map(
                   (category: any) => ({
                     ...category,
-                    videosWatchedToday: usage[today]?.[category.id] || 0,
-                    timeWatchedToday: category.timeWatchedToday || 0,
+                    videosWatchedToday: usage[today]?.[category.id]?.videoCount || 0,
+                    timeWatchedToday: usage[today]?.[category.id]?.timeWatched || 0,
                   })
                 );
             }
@@ -89,18 +89,14 @@ export const useLimitsSettings = () => {
 
   const updateLimitsSettings = useCallback(async (updates: Partial<LimitsSettings>) => {
     try {
-      // Clear any pending timeout
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
 
-      // Merge with pending updates
       pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates };
 
-      // Update local state immediately for responsive UI
       setLimitsSettings((prev) => ({ ...prev, ...updates }));
 
-      // Debounce actual storage updates
       updateTimeoutRef.current = window.setTimeout(async () => {
         try {
           const finalUpdates = pendingUpdatesRef.current;
@@ -115,7 +111,6 @@ export const useLimitsSettings = () => {
           await chrome.storage.sync.set({ [LIMITS_STORAGE_KEY]: newSettings });
           console.debug('Limits settings updated:', newSettings);
 
-          // Send message to content script about the update
           try {
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tabs[0]?.id && tabs[0].url?.includes('youtube.com')) {
@@ -158,7 +153,6 @@ export const useLimitsSettings = () => {
   useEffect(() => {
     fetchLimitsSettings();
 
-    // Listen for storage changes
     const handleStorageChanges = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes[LIMITS_STORAGE_KEY] || changes[USAGE_STORAGE_KEY]) {
         fetchLimitsSettings();
