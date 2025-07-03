@@ -5,7 +5,10 @@ const USAGE_STORAGE_KEY = 'youtube_usage_data';
 
 interface UsageData {
   [date: string]: {
-    [categoryId: string]: number;
+    [categoryId: string]: {
+      videoCount: number;
+      timeWatched: number;
+    };
   };
 }
 
@@ -19,6 +22,11 @@ interface VideoLimitsState {
   currentVideoUrl: string | null;
   pendingTimeouts: number[];
   isModalVisible: boolean;
+  selectedCategoryId: string | null;
+  videoStartTime: number | null;
+  timeTrackingInterval: number | null;
+  wasVideoPaused: boolean;
+  accumulatedTime: number;
 }
 
 const state: VideoLimitsState = {
@@ -31,6 +39,11 @@ const state: VideoLimitsState = {
   currentVideoUrl: null,
   pendingTimeouts: [],
   isModalVisible: false,
+  selectedCategoryId: null,
+  videoStartTime: null,
+  timeTrackingInterval: null,
+  wasVideoPaused: false,
+  accumulatedTime: 0,
 };
 
 /**
@@ -55,9 +68,13 @@ const trackTimeout = (timeoutId: number): void => {
  */
 const resetProcessingState = (): void => {
   clearPendingTimeouts();
+  if (state.timeTrackingInterval || state.selectedCategoryId) {
+    stopTimeTracking();
+  }
   state.isProcessingVideo = false;
   state.isModalVisible = false;
   state.currentVideoUrl = null;
+  state.accumulatedTime = 0;
 };
 
 /**
@@ -96,6 +113,33 @@ const getTimeUntilMidnight = (): {
 };
 
 /**
+ * Format time from minutes to human readable format
+ */
+const formatTime = (minutes: number): string => {
+  const roundedMinutes = Math.round(minutes * 100) / 100;
+  const hours = Math.floor(roundedMinutes / 60);
+  const mins = roundedMinutes % 60;
+
+  if (hours > 0) {
+    if (mins === 0) {
+      return `${hours}h`;
+    } else if (mins === Math.floor(mins)) {
+      return `${hours}h ${Math.floor(mins)}m`;
+    } else {
+      return `${hours}h ${mins.toFixed(2)}m`;
+    }
+  }
+
+  if (roundedMinutes === 0) {
+    return '0m';
+  } else if (roundedMinutes === Math.floor(roundedMinutes)) {
+    return `${Math.floor(roundedMinutes)}m`;
+  } else {
+    return `${roundedMinutes.toFixed(2)}m`;
+  }
+};
+
+/**
  * Clean up old usage data (keep only last 7 days)
  */
 const cleanupOldUsageData = async (): Promise<void> => {
@@ -114,11 +158,16 @@ const cleanupOldUsageData = async (): Promise<void> => {
 
     state.usageData = updatedUsageData;
     await saveUsageData();
-
-    console.debug('[ProductiTube Limits] Cleaned up old usage data');
   } catch (error) {
     console.error('[ProductiTube Limits] Failed to cleanup old usage data:', error);
   }
+};
+
+/**
+ * Check if we're on a video watch page
+ */
+const isVideoWatchPage = (): boolean => {
+  return window.location.pathname === '/watch' && window.location.search.includes('v=');
 };
 
 /**
@@ -134,13 +183,7 @@ const loadData = async (): Promise<void> => {
     state.settings = limitsData[LIMITS_STORAGE_KEY] || null;
     state.usageData = usageData[USAGE_STORAGE_KEY] || {};
 
-    // Clean up old usage data to keep storage optimized
     await cleanupOldUsageData();
-
-    console.debug('[ProductiTube Limits] Loaded data:', {
-      settings: state.settings,
-      usage: state.usageData,
-    });
   } catch (error) {
     console.error('[ProductiTube Limits] Failed to load data:', error);
   }
@@ -152,9 +195,9 @@ const loadData = async (): Promise<void> => {
 const saveUsageData = async (): Promise<void> => {
   try {
     await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: state.usageData });
-    console.debug('[ProductiTube Limits] Saved usage data:', state.usageData);
   } catch (error) {
     console.error('[ProductiTube Limits] Failed to save usage data:', error);
+    throw error;
   }
 };
 
@@ -163,7 +206,15 @@ const saveUsageData = async (): Promise<void> => {
  */
 const getVideosWatchedToday = (categoryId: string): number => {
   const today = getTodayString();
-  return state.usageData[today]?.[categoryId] || 0;
+  return state.usageData[today]?.[categoryId]?.videoCount || 0;
+};
+
+/**
+ * Get time watched today for a specific category (in minutes)
+ */
+const getTimeWatchedToday = (categoryId: string): number => {
+  const today = getTodayString();
+  return state.usageData[today]?.[categoryId]?.timeWatched || 0;
 };
 
 /**
@@ -176,13 +227,162 @@ const incrementVideoCount = async (categoryId: string): Promise<void> => {
     state.usageData[today] = {};
   }
 
-  state.usageData[today][categoryId] = (state.usageData[today][categoryId] || 0) + 1;
-  await saveUsageData();
+  if (!state.usageData[today][categoryId]) {
+    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+  }
 
-  console.debug(
-    `[ProductiTube Limits] Incremented count for category ${categoryId}:`,
-    state.usageData[today][categoryId]
-  );
+  state.usageData[today][categoryId].videoCount += 1;
+  await saveUsageData();
+};
+
+/**
+ * Add time watched for a category (in minutes)
+ */
+const addTimeWatched = async (categoryId: string, minutes: number): Promise<void> => {
+  const today = getTodayString();
+
+  if (!state.usageData[today]) {
+    state.usageData[today] = {};
+  }
+
+  if (!state.usageData[today][categoryId]) {
+    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+  }
+
+  state.usageData[today][categoryId].timeWatched += Math.round(minutes * 100) / 100;
+  await saveUsageData();
+};
+
+/**
+ * Start time tracking for the current video
+ */
+const startTimeTracking = (categoryId: string): void => {
+  if (state.timeTrackingInterval) {
+    clearInterval(state.timeTrackingInterval);
+  }
+
+  state.selectedCategoryId = categoryId;
+  state.videoStartTime = Date.now();
+  state.wasVideoPaused = false;
+  state.accumulatedTime = 0;
+
+  const setupPreciseLimit = () => {
+    const currentTimeWatched = getTimeWatchedToday(categoryId);
+    const activeMode = state.settings?.activeMode || 'time-category';
+    const categories =
+      activeMode === 'video-count' || activeMode === 'time-category'
+        ? state.settings?.categories[activeMode] || []
+        : [];
+    const category = categories.find((cat: VideoCategory) => cat.id === categoryId);
+
+    if (category) {
+      const timeLimit = category.dailyTimeLimit || 60;
+      const remainingTime = timeLimit - currentTimeWatched;
+
+      if (remainingTime > 0) {
+        const remainingMs = remainingTime * 60 * 1000;
+
+        const limitTimeoutId = window.setTimeout(async () => {
+          if (state.timeTrackingInterval) {
+            clearInterval(state.timeTrackingInterval);
+            state.timeTrackingInterval = null;
+          }
+
+          await addTimeWatched(categoryId, remainingTime);
+
+          const video = document.querySelector('video') as HTMLVideoElement;
+          if (video && !video.paused) {
+            video.pause();
+          }
+
+          showLimitBlockingModal(category);
+
+          state.selectedCategoryId = null;
+          state.videoStartTime = null;
+          state.wasVideoPaused = false;
+          state.accumulatedTime = 0;
+        }, remainingMs);
+
+        trackTimeout(limitTimeoutId);
+      } else {
+        setTimeout(async () => {
+          const video = document.querySelector('video') as HTMLVideoElement;
+          if (video && !video.paused) {
+            video.pause();
+          }
+          showLimitBlockingModal(category);
+        }, 100);
+        return;
+      }
+    }
+  };
+
+  setupPreciseLimit();
+
+  state.timeTrackingInterval = window.setInterval(async () => {
+    if (state.selectedCategoryId && state.videoStartTime) {
+      const video = document.querySelector('video') as HTMLVideoElement;
+      const isCurrentlyPaused = !video || video.paused;
+
+      if (state.wasVideoPaused && !isCurrentlyPaused) {
+        state.videoStartTime = Date.now();
+        state.wasVideoPaused = false;
+
+        clearPendingTimeouts();
+        setupPreciseLimit();
+        return;
+      }
+
+      if (isCurrentlyPaused) {
+        if (!state.wasVideoPaused) {
+          const elapsed = (Date.now() - state.videoStartTime) / (1000 * 60);
+          if (elapsed >= 0.17) {
+            state.accumulatedTime += elapsed;
+            await addTimeWatched(state.selectedCategoryId, elapsed);
+          }
+          clearPendingTimeouts();
+        }
+        state.wasVideoPaused = true;
+        return;
+      }
+
+      state.wasVideoPaused = false;
+      const elapsed = (Date.now() - state.videoStartTime) / (1000 * 60);
+
+      if (elapsed >= 0.17) {
+        state.accumulatedTime += elapsed;
+        await addTimeWatched(state.selectedCategoryId, elapsed);
+        state.videoStartTime = Date.now();
+
+        clearPendingTimeouts();
+        setupPreciseLimit();
+      }
+    }
+  }, 10000);
+};
+
+/**
+ * Stop time tracking
+ */
+const stopTimeTracking = async (): Promise<void> => {
+  if (state.timeTrackingInterval) {
+    clearInterval(state.timeTrackingInterval);
+    state.timeTrackingInterval = null;
+  }
+
+  if (state.selectedCategoryId && state.videoStartTime && !state.wasVideoPaused) {
+    const elapsed = (Date.now() - state.videoStartTime) / (1000 * 60);
+
+    if (elapsed >= 0.17) {
+      state.accumulatedTime += elapsed;
+      await addTimeWatched(state.selectedCategoryId, elapsed);
+    }
+  }
+
+  state.selectedCategoryId = null;
+  state.videoStartTime = null;
+  state.wasVideoPaused = false;
+  state.accumulatedTime = 0;
 };
 
 /**
@@ -195,8 +395,14 @@ const createCategoryModal = (): HTMLElement => {
   modal.id = 'productitube-category-modal';
   modal.className = 'productitube-modal-overlay';
 
-  const categories = state.settings?.categories['video-count'] || [];
-  const activeCategories = categories.filter((cat) => cat.isActive);
+  const activeMode = state.settings?.activeMode || 'video-count';
+  const categories =
+    activeMode === 'video-count' || activeMode === 'time-category'
+      ? state.settings?.categories[activeMode] || []
+      : [];
+  const activeCategories = categories.filter((cat: VideoCategory) => cat.isActive);
+
+  const isTimeMode = activeMode === 'time-category';
 
   modal.innerHTML = `
     <div class="productitube-modal-content">
@@ -255,10 +461,22 @@ const createCategoryModal = (): HTMLElement => {
         
         <div class="productitube-category-grid">
           ${activeCategories
-            .map((category) => {
-              const watchedCount = getVideosWatchedToday(category.id);
-              const isLimitReached = watchedCount >= category.dailyLimitCount;
-              const remaining = category.dailyLimitCount - watchedCount;
+            .map((category: VideoCategory) => {
+              let usedValue, limitValue, isLimitReached, remaining, remainingText;
+
+              if (isTimeMode) {
+                usedValue = getTimeWatchedToday(category.id);
+                limitValue = category.dailyTimeLimit || 60;
+                isLimitReached = usedValue >= limitValue;
+                remaining = limitValue - usedValue;
+                remainingText = isLimitReached ? 'Time reached' : `${formatTime(remaining)} left`;
+              } else {
+                usedValue = getVideosWatchedToday(category.id);
+                limitValue = category.dailyLimitCount;
+                isLimitReached = usedValue >= limitValue;
+                remaining = limitValue - usedValue;
+                remainingText = isLimitReached ? 'Limit reached' : `${remaining} left`;
+              }
 
               return `
               <button 
@@ -273,9 +491,11 @@ const createCategoryModal = (): HTMLElement => {
                 <div class="productitube-category-info">
                   <div class="productitube-category-name">${category.name}</div>
                   <div class="productitube-category-stats">
-                    <span class="productitube-category-count">${watchedCount}/${category.dailyLimitCount} videos</span>
+                    <span class="productitube-category-count">
+                      ${isTimeMode ? `${formatTime(usedValue)}/${formatTime(limitValue)}` : `${usedValue}/${limitValue} videos`}
+                    </span>
                     <span class="productitube-category-badge ${isLimitReached ? 'limit-reached' : 'remaining'}">
-                      ${isLimitReached ? 'Limit reached' : `${remaining} left`}
+                      ${remainingText}
                     </span>
                   </div>
                 </div>
@@ -1049,15 +1269,7 @@ const createCategoryModal = (): HTMLElement => {
     e.preventDefault();
     e.stopPropagation();
 
-    console.debug('[ProductiTube Limits] Continue button clicked', {
-      selectedCategoryId,
-      isModalVisible: state.isModalVisible,
-      isProcessingVideo: state.isProcessingVideo,
-      buttonDisabled: continueButton?.disabled,
-    });
-
     if (!selectedCategoryId) {
-      console.warn('[ProductiTube Limits] No category selected');
       return;
     }
 
@@ -1068,7 +1280,6 @@ const createCategoryModal = (): HTMLElement => {
 
     const failsafeTimeout = setTimeout(() => {
       if (continueButton && continueButton.disabled) {
-        console.warn('[ProductiTube Limits] Failsafe: Re-enabling continue button after timeout');
         continueButton.disabled = false;
         continueButton.textContent = 'Continue';
       }
@@ -1100,25 +1311,23 @@ const createCategoryModal = (): HTMLElement => {
  * Handle category selection
  */
 const handleCategorySelection = async (categoryId: string): Promise<void> => {
-  console.debug('[ProductiTube Limits] Handling category selection', {
-    categoryId,
-    isModalVisible: state.isModalVisible,
-    isProcessingVideo: state.isProcessingVideo,
-    modalExists: !!document.getElementById('productitube-category-modal'),
-  });
-
   const modalExists = !!document.getElementById('productitube-category-modal');
   if (!modalExists) {
-    console.debug('[ProductiTube Limits] Category selection ignored - no modal exists');
     return;
   }
 
   if (!state.isModalVisible && !state.isProcessingVideo) {
-    console.debug('[ProductiTube Limits] Category selection ignored - already processed');
     return;
   }
 
-  const category = state.settings?.categories['video-count']?.find((cat) => cat.id === categoryId);
+  const activeMode = state.settings?.activeMode || 'video-count';
+
+  const categories =
+    activeMode === 'video-count' || activeMode === 'time-category'
+      ? state.settings?.categories[activeMode] || []
+      : [];
+  const category = categories.find((cat: VideoCategory) => cat.id === categoryId);
+
   if (!category) {
     console.error('[ProductiTube Limits] Category not found:', categoryId);
     return;
@@ -1127,24 +1336,33 @@ const handleCategorySelection = async (categoryId: string): Promise<void> => {
   state.isModalVisible = false;
 
   try {
-    console.debug('[ProductiTube Limits] Incrementing video count for category:', category.name);
-    await incrementVideoCount(categoryId);
+    const isTimeMode = activeMode === 'time-category';
 
-    const newCount = getVideosWatchedToday(categoryId);
-    const hasReachedLimit = newCount >= category.dailyLimitCount;
+    if (isTimeMode) {
+      startTimeTracking(categoryId);
 
-    console.debug('[ProductiTube Limits] Category selection completed', {
-      categoryName: category.name,
-      newCount,
-      limit: category.dailyLimitCount,
-      hasReachedLimit,
-    });
+      const timeWatched = getTimeWatchedToday(categoryId);
+      const timeLimit = category.dailyTimeLimit || 60;
+      const hasReachedLimit = timeWatched >= timeLimit;
 
-    if (hasReachedLimit) {
-      showLimitReachedMessage(category);
+      if (hasReachedLimit) {
+        showLimitReachedMessage(category);
+      } else {
+        resumeVideo();
+        removeModalOnly();
+      }
     } else {
-      resumeVideo();
-      removeModal();
+      await incrementVideoCount(categoryId);
+
+      const newCount = getVideosWatchedToday(categoryId);
+      const hasReachedLimit = newCount >= category.dailyLimitCount;
+
+      if (hasReachedLimit) {
+        showLimitReachedMessage(category);
+      } else {
+        resumeVideo();
+        removeModal();
+      }
     }
   } catch (error) {
     console.error('[ProductiTube Limits] Error in category selection:', error);
@@ -1155,10 +1373,172 @@ const handleCategorySelection = async (categoryId: string): Promise<void> => {
 };
 
 /**
+ * Show blocking modal when time limit is reached during video playback
+ */
+const showLimitBlockingModal = (category: VideoCategory): void => {
+  removeModal();
+
+  const message = document.createElement('div');
+  message.className = 'productitube-limit-blocking-message';
+  message.innerHTML = `
+    <div class="productitube-limit-blocking-content">
+      <div class="productitube-limit-icon warning">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
+          <path d="m15 9-6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="m9 9 6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h3>Time Limit Reached</h3>
+      <div class="productitube-limit-text">
+        <p>You've reached your daily time limit for the <strong>${category.name}</strong> category.</p>
+        <p>Time to take a break and explore other activities!</p>
+      </div>
+      <div class="productitube-limit-actions">
+        <button id="productitube-home-btn" class="productitube-btn-primary">Go to Home Feed</button>
+      </div>
+    </div>
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .productitube-limit-blocking-message {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10002;
+      font-family: 'YouTube Noto', Roboto, Arial, Helvetica, sans-serif;
+      animation: productitube-fade-in 0.3s ease-out;
+      padding: 16px;
+    }
+    
+    .productitube-limit-blocking-content {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 32px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      animation: productitube-scale-in 0.3s ease-out;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .productitube-limit-icon.warning {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    }
+    
+    .productitube-limit-blocking-content h3 {
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #dc2626;
+      line-height: 1.2;
+    }
+    
+    .productitube-limit-text {
+      margin-bottom: 28px;
+    }
+    
+    .productitube-limit-blocking-content p {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+    
+    .productitube-limit-blocking-content p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .productitube-limit-blocking-content strong {
+      color: #1e293b;
+      font-weight: 600;
+    }
+    
+    .productitube-limit-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    
+    .productitube-btn-primary {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    
+    .productitube-btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+    }
+    
+    .productitube-btn-primary:active {
+      transform: translateY(0);
+    }
+    
+    .productitube-btn-secondary {
+      padding: 12px 24px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      background: white;
+      color: #475569;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .productitube-btn-secondary:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .productitube-btn-secondary:active {
+      transform: translateY(0);
+    }
+  `;
+
+  document.head.appendChild(style);
+  document.body.appendChild(message);
+
+  const homeButton = message.querySelector('#productitube-home-btn');
+  homeButton?.addEventListener('click', () => {
+    window.location.href = '/';
+  });
+};
+
+/**
  * Show limit reached message (when user reaches limit after selecting category)
  */
 const showLimitReachedMessage = (category: VideoCategory): void => {
   removeModal();
+
+  const activeMode = state.settings?.activeMode || 'video-count';
+  const isTimeMode = activeMode === 'time-category';
 
   const message = document.createElement('div');
   message.className = 'productitube-limit-message';
@@ -1172,8 +1552,8 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
       </div>
       <h3>Enjoy this video!</h3>
       <div class="productitube-limit-text">
-        <p>This video has been counted toward your <strong>${category.name}</strong> category.</p>
-        <p>You've now reached your daily limit for this category.</p>
+        <p>This video has been ${isTimeMode ? 'added to your watch time' : 'counted'} for your <strong>${category.name}</strong> category.</p>
+        <p>You've now reached your daily ${isTimeMode ? 'time' : 'video'} limit for this category.</p>
       </div>
       <button id="productitube-limit-ok" class="productitube-btn-primary">Start Watching</button>
     </div>
@@ -1291,6 +1671,55 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
 };
 
 /**
+ * Remove modal from DOM without stopping time tracking
+ */
+const removeModalOnly = (): void => {
+  const existingModal = document.getElementById('productitube-category-modal');
+  if (existingModal) {
+    const intervalId = (existingModal as HTMLElement & { __countdownInterval?: number })
+      .__countdownInterval;
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+  }
+
+  if (state.modalElement && state.modalElement.parentNode) {
+    state.modalElement.parentNode.removeChild(state.modalElement);
+    state.modalElement = null;
+  }
+
+  if (existingModal && existingModal.parentNode) {
+    existingModal.parentNode.removeChild(existingModal);
+  }
+
+  const existingStyles = document.querySelectorAll('style');
+  existingStyles.forEach((style) => {
+    if (
+      style.textContent?.includes('productitube-modal-overlay') ||
+      style.textContent?.includes('productitube-limit-message') ||
+      style.textContent?.includes('productitube-limit-blocking-message')
+    ) {
+      style.remove();
+    }
+  });
+
+  const existingBlockingModal = document.querySelector('.productitube-limit-blocking-message');
+  if (existingBlockingModal && existingBlockingModal.parentNode) {
+    existingBlockingModal.parentNode.removeChild(existingBlockingModal);
+  }
+
+  const scrollbarOverride = document.getElementById('productitube-scrollbar-override');
+  if (scrollbarOverride) {
+    scrollbarOverride.remove();
+  }
+
+  clearPendingTimeouts();
+  state.isProcessingVideo = false;
+  state.isModalVisible = false;
+  state.currentVideoUrl = null;
+};
+
+/**
  * Remove modal from DOM
  */
 const removeModal = (): void => {
@@ -1316,11 +1745,17 @@ const removeModal = (): void => {
   existingStyles.forEach((style) => {
     if (
       style.textContent?.includes('productitube-modal-overlay') ||
-      style.textContent?.includes('productitube-limit-message')
+      style.textContent?.includes('productitube-limit-message') ||
+      style.textContent?.includes('productitube-limit-blocking-message')
     ) {
       style.remove();
     }
   });
+
+  const existingBlockingModal = document.querySelector('.productitube-limit-blocking-message');
+  if (existingBlockingModal && existingBlockingModal.parentNode) {
+    existingBlockingModal.parentNode.removeChild(existingBlockingModal);
+  }
 
   const scrollbarOverride = document.getElementById('productitube-scrollbar-override');
   if (scrollbarOverride) {
@@ -1338,7 +1773,6 @@ const pauseVideo = (): void => {
   if (video && !video.paused) {
     video.pause();
     state.videoElement = video;
-    console.debug('[ProductiTube Limits] Video paused for categorization');
   }
 };
 
@@ -1348,17 +1782,9 @@ const pauseVideo = (): void => {
 const resumeVideo = (): void => {
   if (state.videoElement && state.videoElement.paused) {
     state.videoElement.play();
-    console.debug('[ProductiTube Limits] Video resumed');
   }
   state.videoElement = null;
   state.isProcessingVideo = false;
-};
-
-/**
- * Check if we're on a video watch page
- */
-const isVideoWatchPage = (): boolean => {
-  return window.location.pathname === '/watch' && window.location.search.includes('v=');
 };
 
 /**
@@ -1379,23 +1805,26 @@ const handleVideoLoad = async (): Promise<void> => {
   try {
     await loadData();
 
-    if (!state.settings?.isLimitsEnabled || state.settings?.activeMode !== 'video-count') {
+    const activeMode = state.settings?.activeMode;
+
+    if (
+      !state.settings?.isLimitsEnabled ||
+      (activeMode !== 'video-count' && activeMode !== 'time-category')
+    ) {
       resetProcessingState();
       return;
     }
 
-    const categories = state.settings.categories['video-count'] || [];
-    const activeCategories = categories.filter((cat) => cat.isActive);
+    const categories = state.settings.categories[activeMode] || [];
+    const activeCategories = categories.filter((cat: VideoCategory) => cat.isActive);
 
     if (activeCategories.length === 0) {
-      console.debug('[ProductiTube Limits] No active categories, skipping limits');
       resetProcessingState();
       return;
     }
 
     const waitForVideo = () => {
       if (state.isModalVisible || document.getElementById('productitube-category-modal')) {
-        console.debug('[ProductiTube Limits] Modal already exists, skipping creation');
         return;
       }
 
@@ -1404,7 +1833,6 @@ const handleVideoLoad = async (): Promise<void> => {
         pauseVideo();
         state.modalElement = createCategoryModal();
         state.isModalVisible = true;
-        console.debug('[ProductiTube Limits] Modal created successfully');
       } else {
         if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
           const timeoutId = window.setTimeout(waitForVideo, 500);
@@ -1425,10 +1853,9 @@ const handleVideoLoad = async (): Promise<void> => {
  * Initialize video limits feature
  */
 export const initializeVideoLimits = (): (() => void) => {
-  console.debug('[ProductiTube Limits] Initializing video limits feature');
-
   let videoObserver: MutationObserver | null = null;
   let navigationHandler: (() => void) | null = null;
+  let messageListener: ((message: any, sender: any, sendResponse: any) => void) | null = null;
 
   const startWatching = () => {
     videoObserver = new MutationObserver((mutations) => {
@@ -1441,6 +1868,21 @@ export const initializeVideoLimits = (): (() => void) => {
 
           if (hasVideo) {
             handleVideoLoad();
+
+            const video = document.querySelector('video') as HTMLVideoElement;
+            if (video) {
+              video.addEventListener('ended', async () => {
+                if (state.selectedCategoryId) {
+                  await stopTimeTracking();
+                }
+              });
+
+              window.addEventListener('beforeunload', async () => {
+                if (state.selectedCategoryId) {
+                  await stopTimeTracking();
+                }
+              });
+            }
           }
         }
       }
@@ -1452,12 +1894,27 @@ export const initializeVideoLimits = (): (() => void) => {
     });
 
     navigationHandler = () => {
+      if (state.selectedCategoryId) {
+        stopTimeTracking();
+      }
+
       if (isVideoWatchPage()) {
         setTimeout(handleVideoLoad, 1500);
       }
     };
 
     window.addEventListener('yt-navigate-finish', navigationHandler);
+
+    messageListener = (message, sender, sendResponse) => {
+      if (message.type === 'LIMITS_UPDATED') {
+        loadData().catch((error) =>
+          console.error('[ProductiTube Limits] Error reloading settings:', error)
+        );
+        sendResponse({ success: true });
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(messageListener);
 
     if (isVideoWatchPage()) {
       handleVideoLoad();
@@ -1468,8 +1925,6 @@ export const initializeVideoLimits = (): (() => void) => {
   state.isActive = true;
 
   return () => {
-    console.debug('[ProductiTube Limits] Cleaning up video limits feature');
-
     if (videoObserver) {
       videoObserver.disconnect();
       videoObserver = null;
@@ -1478,6 +1933,11 @@ export const initializeVideoLimits = (): (() => void) => {
     if (navigationHandler) {
       window.removeEventListener('yt-navigate-finish', navigationHandler);
       navigationHandler = null;
+    }
+
+    if (messageListener) {
+      chrome.runtime.onMessage.removeListener(messageListener);
+      messageListener = null;
     }
 
     removeModal();
