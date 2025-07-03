@@ -48,6 +48,7 @@ export interface LimitsSettings {
   };
   activeMode?: 'video-count' | 'time-category' | 'time-total';
   totalDailyTimeLimit?: number;
+  totalTimeWatchedToday?: number;
   favoriteCategories?: FavoriteCategory[];
 }
 
