@@ -27,6 +27,10 @@ interface VideoLimitsState {
   timeTrackingInterval: number | null;
   wasVideoPaused: boolean;
   accumulatedTime: number;
+  totalTimeStartTime: number | null;
+  totalTimeTrackingInterval: number | null;
+  totalTimeWasVideoPaused: boolean;
+  totalTimeAccumulated: number;
 }
 
 const state: VideoLimitsState = {
@@ -44,6 +48,10 @@ const state: VideoLimitsState = {
   timeTrackingInterval: null,
   wasVideoPaused: false,
   accumulatedTime: 0,
+  totalTimeStartTime: null,
+  totalTimeTrackingInterval: null,
+  totalTimeWasVideoPaused: false,
+  totalTimeAccumulated: 0,
 };
 
 /**
@@ -70,6 +78,9 @@ const resetProcessingState = (): void => {
   clearPendingTimeouts();
   if (state.timeTrackingInterval || state.selectedCategoryId) {
     stopTimeTracking();
+  }
+  if (state.totalTimeTrackingInterval) {
+    stopTotalTimeTracking();
   }
   state.isProcessingVideo = false;
   state.isModalVisible = false;
@@ -383,6 +394,157 @@ const stopTimeTracking = async (): Promise<void> => {
   state.videoStartTime = null;
   state.wasVideoPaused = false;
   state.accumulatedTime = 0;
+};
+
+/**
+ * Get total time watched today (across all categories)
+ */
+const getTotalTimeWatchedToday = (): number => {
+  const today = getTodayString();
+  const todayData = state.usageData[today] || {};
+
+  return Object.values(todayData).reduce((total, categoryData) => {
+    return total + (categoryData.timeWatched || 0);
+  }, 0);
+};
+
+/**
+ * Add time to total daily usage
+ */
+const addTotalTimeWatched = async (minutes: number): Promise<void> => {
+  const today = getTodayString();
+  const totalCategoryId = 'total-time-limit';
+
+  if (!state.usageData[today]) {
+    state.usageData[today] = {};
+  }
+
+  if (!state.usageData[today][totalCategoryId]) {
+    state.usageData[today][totalCategoryId] = { videoCount: 0, timeWatched: 0 };
+  }
+
+  state.usageData[today][totalCategoryId].timeWatched += Math.round(minutes * 100) / 100;
+  await saveUsageData();
+};
+
+/**
+ * Start total time tracking (for time-total mode)
+ */
+const startTotalTimeTracking = (): void => {
+  if (state.totalTimeTrackingInterval) {
+    clearInterval(state.totalTimeTrackingInterval);
+  }
+
+  state.totalTimeStartTime = Date.now();
+  state.totalTimeWasVideoPaused = false;
+  state.totalTimeAccumulated = 0;
+
+  const setupPreciseLimit = () => {
+    const currentTimeWatched = getTotalTimeWatchedToday();
+    const timeLimit = state.settings?.totalDailyTimeLimit || 60;
+    const remainingTime = timeLimit - currentTimeWatched;
+
+    if (remainingTime > 0) {
+      const remainingMs = remainingTime * 60 * 1000;
+
+      const limitTimeoutId = window.setTimeout(async () => {
+        if (state.totalTimeTrackingInterval) {
+          clearInterval(state.totalTimeTrackingInterval);
+          state.totalTimeTrackingInterval = null;
+        }
+
+        await addTotalTimeWatched(remainingTime);
+
+        const video = document.querySelector('video') as HTMLVideoElement;
+        if (video && !video.paused) {
+          video.pause();
+        }
+
+        showTotalTimeLimitReachedModal();
+
+        state.totalTimeStartTime = null;
+        state.totalTimeWasVideoPaused = false;
+        state.totalTimeAccumulated = 0;
+      }, remainingMs);
+
+      trackTimeout(limitTimeoutId);
+    } else {
+      setTimeout(async () => {
+        const video = document.querySelector('video') as HTMLVideoElement;
+        if (video && !video.paused) {
+          video.pause();
+        }
+        showTotalTimeLimitReachedModal();
+      }, 100);
+      return;
+    }
+  };
+
+  setupPreciseLimit();
+
+  state.totalTimeTrackingInterval = window.setInterval(async () => {
+    if (state.totalTimeStartTime) {
+      const video = document.querySelector('video') as HTMLVideoElement;
+      const isCurrentlyPaused = !video || video.paused;
+
+      if (state.totalTimeWasVideoPaused && !isCurrentlyPaused) {
+        state.totalTimeStartTime = Date.now();
+        state.totalTimeWasVideoPaused = false;
+
+        clearPendingTimeouts();
+        setupPreciseLimit();
+        return;
+      }
+
+      if (isCurrentlyPaused) {
+        if (!state.totalTimeWasVideoPaused) {
+          const elapsed = (Date.now() - state.totalTimeStartTime) / (1000 * 60);
+          if (elapsed >= 0.17) {
+            state.totalTimeAccumulated += elapsed;
+            await addTotalTimeWatched(elapsed);
+          }
+          clearPendingTimeouts();
+        }
+        state.totalTimeWasVideoPaused = true;
+        return;
+      }
+
+      state.totalTimeWasVideoPaused = false;
+      const elapsed = (Date.now() - state.totalTimeStartTime) / (1000 * 60);
+
+      if (elapsed >= 0.17) {
+        state.totalTimeAccumulated += elapsed;
+        await addTotalTimeWatched(elapsed);
+        state.totalTimeStartTime = Date.now();
+
+        clearPendingTimeouts();
+        setupPreciseLimit();
+      }
+    }
+  }, 10000);
+};
+
+/**
+ * Stop total time tracking
+ */
+const stopTotalTimeTracking = async (): Promise<void> => {
+  if (state.totalTimeTrackingInterval) {
+    clearInterval(state.totalTimeTrackingInterval);
+    state.totalTimeTrackingInterval = null;
+  }
+
+  if (state.totalTimeStartTime && !state.totalTimeWasVideoPaused) {
+    const elapsed = (Date.now() - state.totalTimeStartTime) / (1000 * 60);
+
+    if (elapsed >= 0.17) {
+      state.totalTimeAccumulated += elapsed;
+      await addTotalTimeWatched(elapsed);
+    }
+  }
+
+  state.totalTimeStartTime = null;
+  state.totalTimeWasVideoPaused = false;
+  state.totalTimeAccumulated = 0;
 };
 
 /**
@@ -1671,6 +1833,145 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
 };
 
 /**
+ * Show total time limit reached modal
+ */
+const showTotalTimeLimitReachedModal = (): void => {
+  removeModal();
+
+  const timeLimit = state.settings?.totalDailyTimeLimit || 60;
+  const timeWatched = getTotalTimeWatchedToday();
+
+  const message = document.createElement('div');
+  message.className = 'productitube-limit-blocking-message';
+  message.innerHTML = `
+    <div class="productitube-limit-blocking-content">
+      <div class="productitube-limit-icon warning">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
+          <path d="m15 9-6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="m9 9 6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h3>Daily Time Limit Reached</h3>
+      <div class="productitube-limit-text">
+        <p>You've reached your daily YouTube time limit of <strong>${formatTime(timeLimit)}</strong>.</p>
+        <p>You've watched <strong>${formatTime(timeWatched)}</strong> today. Time to take a break!</p>
+      </div>
+      <div class="productitube-limit-actions">
+        <button id="productitube-home-btn" class="productitube-btn-primary">Go to Home Feed</button>
+      </div>
+    </div>
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .productitube-limit-blocking-message {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10002;
+      font-family: 'YouTube Noto', Roboto, Arial, Helvetica, sans-serif;
+      animation: productitube-fade-in 0.3s ease-out;
+      padding: 16px;
+    }
+    
+    .productitube-limit-blocking-content {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 32px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      animation: productitube-scale-in 0.3s ease-out;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .productitube-limit-icon.warning {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    }
+    
+    .productitube-limit-blocking-content h3 {
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #dc2626;
+      line-height: 1.2;
+    }
+    
+    .productitube-limit-text {
+      margin-bottom: 28px;
+    }
+    
+    .productitube-limit-blocking-content p {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+    
+    .productitube-limit-blocking-content p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .productitube-limit-blocking-content strong {
+      color: #1e293b;
+      font-weight: 600;
+    }
+    
+    .productitube-limit-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    
+    .productitube-btn-primary {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    
+    .productitube-btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+    }
+    
+    .productitube-btn-primary:active {
+      transform: translateY(0);
+    }
+  `;
+
+  document.head.appendChild(style);
+  document.body.appendChild(message);
+
+  const homeButton = message.querySelector('#productitube-home-btn');
+  homeButton?.addEventListener('click', () => {
+    window.location.href = '/';
+  });
+};
+
+/**
  * Remove modal from DOM without stopping time tracking
  */
 const removeModalOnly = (): void => {
@@ -1807,10 +2108,53 @@ const handleVideoLoad = async (): Promise<void> => {
 
     const activeMode = state.settings?.activeMode;
 
-    if (
-      !state.settings?.isLimitsEnabled ||
-      (activeMode !== 'video-count' && activeMode !== 'time-category')
-    ) {
+    if (!state.settings?.isLimitsEnabled) {
+      resetProcessingState();
+      return;
+    }
+
+    if (activeMode === 'time-total') {
+      const timeLimit = state.settings?.totalDailyTimeLimit || 60;
+      const timeWatched = getTotalTimeWatchedToday();
+
+      if (timeWatched >= timeLimit) {
+        const waitForVideo = () => {
+          const video = document.querySelector('video') as HTMLVideoElement;
+          if (video && video.readyState >= 1) {
+            pauseVideo();
+            showTotalTimeLimitReachedModal();
+          } else {
+            if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
+              const timeoutId = window.setTimeout(waitForVideo, 500);
+              trackTimeout(timeoutId);
+            }
+          }
+        };
+
+        const initialTimeoutId = window.setTimeout(waitForVideo, 1000);
+        trackTimeout(initialTimeoutId);
+        return;
+      }
+
+      const waitForVideo = () => {
+        const video = document.querySelector('video') as HTMLVideoElement;
+        if (video && video.readyState >= 1) {
+          startTotalTimeTracking();
+          state.isProcessingVideo = false;
+        } else {
+          if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
+            const timeoutId = window.setTimeout(waitForVideo, 500);
+            trackTimeout(timeoutId);
+          }
+        }
+      };
+
+      const initialTimeoutId = window.setTimeout(waitForVideo, 1000);
+      trackTimeout(initialTimeoutId);
+      return;
+    }
+
+    if (activeMode !== 'video-count' && activeMode !== 'time-category') {
       resetProcessingState();
       return;
     }
@@ -1875,11 +2219,17 @@ export const initializeVideoLimits = (): (() => void) => {
                 if (state.selectedCategoryId) {
                   await stopTimeTracking();
                 }
+                if (state.totalTimeTrackingInterval) {
+                  await stopTotalTimeTracking();
+                }
               });
 
               window.addEventListener('beforeunload', async () => {
                 if (state.selectedCategoryId) {
                   await stopTimeTracking();
+                }
+                if (state.totalTimeTrackingInterval) {
+                  await stopTotalTimeTracking();
                 }
               });
             }
@@ -1896,6 +2246,9 @@ export const initializeVideoLimits = (): (() => void) => {
     navigationHandler = () => {
       if (state.selectedCategoryId) {
         stopTimeTracking();
+      }
+      if (state.totalTimeTrackingInterval) {
+        stopTotalTimeTracking();
       }
 
       if (isVideoWatchPage()) {
