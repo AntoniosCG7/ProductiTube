@@ -1,8 +1,67 @@
 import type { LimitsSettings, VideoCategory } from '@/types';
 
+// ==================== CONSTANTS ====================
+
+// Storage Keys
 const LIMITS_STORAGE_KEY = 'youtube_limits_settings';
 const USAGE_STORAGE_KEY = 'youtube_usage_data';
 
+// Time and Tracking Constants
+const TIME_TRACKING_INTERVAL_MS = 10000;
+const MIN_TRACKING_TIME_MINUTES = 0.17;
+const DEFAULT_TIME_LIMIT_MINUTES = 60;
+const USAGE_DATA_RETENTION_DAYS = 7;
+const TOTAL_TIME_CATEGORY_ID = 'total-time-limit';
+
+// Timeout and Delay Constants
+const VIDEO_WAIT_TIMEOUT_MS = 500;
+const INITIAL_VIDEO_WAIT_MS = 1000;
+const NAVIGATION_DELAY_MS = 1500;
+const QUICK_TIMEOUT_MS = 100;
+const FAILSAFE_TIMEOUT_MS = 10000;
+const COUNTDOWN_UPDATE_INTERVAL_MS = 1000;
+
+// Time Calculation Constants
+const MILLISECONDS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+const TOTAL_DAY_MS =
+  HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
+
+// DOM Element IDs
+const MODAL_ID = 'productitube-category-modal';
+const COUNTDOWN_TIME_ID = 'productitube-countdown-time';
+const PROGRESS_FILL_ID = 'productitube-progress-fill';
+const CONTINUE_BUTTON_ID = 'productitube-continue-btn';
+const HOME_BUTTON_ID = 'productitube-home-btn';
+const LIMIT_OK_BUTTON_ID = 'productitube-limit-ok';
+const SCROLLBAR_OVERRIDE_ID = 'productitube-scrollbar-override';
+
+// CSS Class Names
+const MODAL_OVERLAY_CLASS = 'productitube-modal-overlay';
+const CATEGORY_OPTION_CLASS = 'productitube-category-option';
+const CATEGORY_SELECTED_CLASS = 'selected';
+const LIMIT_MESSAGE_CLASS = 'productitube-limit-message';
+const LIMIT_BLOCKING_MESSAGE_CLASS = 'productitube-limit-blocking-message';
+
+// URL and Navigation Constants
+const YOUTUBE_HOME_URL = '/';
+
+// Feature Labels
+const FEATURE_LABELS = {
+  TIME_LIMIT_REACHED: 'Time Limit Reached',
+  DAILY_LIMIT_REACHED: 'Daily Time Limit Reached',
+  CATEGORIZE_VIDEO: 'Categorize this video',
+  ENJOY_VIDEO: 'Enjoy this video!',
+  LIMITS_RESET: 'Limits reset in',
+  GO_HOME: 'Go to Home Feed',
+  CONTINUE: 'Continue',
+  START_WATCHING: 'Start Watching',
+  PROCESSING: 'Processing...',
+} as const;
+
+// ==================== INTERFACES ====================
 interface UsageData {
   [date: string]: {
     [categoryId: string]: {
@@ -13,81 +72,63 @@ interface UsageData {
 }
 
 interface VideoLimitsState {
+  // Core state
   isActive: boolean;
   settings: LimitsSettings | null;
   usageData: UsageData;
+
+  // UI state
   modalElement: HTMLElement | null;
   videoElement: HTMLVideoElement | null;
   isProcessingVideo: boolean;
   currentVideoUrl: string | null;
   pendingTimeouts: number[];
   isModalVisible: boolean;
+
+  // Category-based tracking
   selectedCategoryId: string | null;
   videoStartTime: number | null;
   timeTrackingInterval: number | null;
   wasVideoPaused: boolean;
   accumulatedTime: number;
+
+  // Total time tracking
   totalTimeStartTime: number | null;
   totalTimeTrackingInterval: number | null;
   totalTimeWasVideoPaused: boolean;
   totalTimeAccumulated: number;
 }
 
+// ==================== STATE INITIALIZATION ====================
 const state: VideoLimitsState = {
+  // Core state
   isActive: false,
   settings: null,
   usageData: {},
+
+  // UI state
   modalElement: null,
   videoElement: null,
   isProcessingVideo: false,
   currentVideoUrl: null,
   pendingTimeouts: [],
   isModalVisible: false,
+
+  // Category-based tracking
   selectedCategoryId: null,
   videoStartTime: null,
   timeTrackingInterval: null,
   wasVideoPaused: false,
   accumulatedTime: 0,
+
+  // Total time tracking
   totalTimeStartTime: null,
   totalTimeTrackingInterval: null,
   totalTimeWasVideoPaused: false,
   totalTimeAccumulated: 0,
 };
 
-/**
- * Clear all pending timeouts
- */
-const clearPendingTimeouts = (): void => {
-  state.pendingTimeouts.forEach((timeoutId) => {
-    clearTimeout(timeoutId);
-  });
-  state.pendingTimeouts = [];
-};
-
-/**
- * Add a timeout to tracking
- */
-const trackTimeout = (timeoutId: number): void => {
-  state.pendingTimeouts.push(timeoutId);
-};
-
-/**
- * Reset processing state completely
- */
-const resetProcessingState = (): void => {
-  clearPendingTimeouts();
-  if (state.timeTrackingInterval || state.selectedCategoryId) {
-    stopTimeTracking();
-  }
-  if (state.totalTimeTrackingInterval) {
-    stopTotalTimeTracking();
-  }
-  state.isProcessingVideo = false;
-  state.isModalVisible = false;
-  state.currentVideoUrl = null;
-  state.accumulatedTime = 0;
-};
-
+// ==================== UTILITY FUNCTIONS ====================
 /**
  * Get current video URL for comparison
  */
@@ -100,6 +141,13 @@ const getCurrentVideoUrl = (): string => {
  */
 const getTodayString = (): string => {
   return new Date().toDateString();
+};
+
+/**
+ * Check if we're on a video watch page
+ */
+const isVideoWatchPage = (): boolean => {
+  return window.location.pathname === '/watch' && window.location.search.includes('v=');
 };
 
 /**
@@ -150,37 +198,42 @@ const formatTime = (minutes: number): string => {
   }
 };
 
+// ==================== STATE MANAGEMENT ====================
 /**
- * Clean up old usage data (keep only last 7 days)
+ * Clear all pending timeouts
  */
-const cleanupOldUsageData = async (): Promise<void> => {
-  try {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 7);
+const clearPendingTimeouts = (): void => {
+  state.pendingTimeouts.forEach((timeoutId) => {
+    clearTimeout(timeoutId);
+  });
+  state.pendingTimeouts = [];
+};
 
-    const updatedUsageData: UsageData = {};
+/**
+ * Add a timeout to tracking
+ */
+const trackTimeout = (timeoutId: number): void => {
+  state.pendingTimeouts.push(timeoutId);
+};
 
-    for (const [dateStr, data] of Object.entries(state.usageData)) {
-      const dataDate = new Date(dateStr);
-      if (dataDate >= cutoffDate) {
-        updatedUsageData[dateStr] = data;
-      }
-    }
-
-    state.usageData = updatedUsageData;
-    await saveUsageData();
-  } catch (error) {
-    console.error('[ProductiTube Limits] Failed to cleanup old usage data:', error);
+/**
+ * Reset processing state completely
+ */
+const resetProcessingState = (): void => {
+  clearPendingTimeouts();
+  if (state.timeTrackingInterval || state.selectedCategoryId) {
+    stopTimeTracking();
   }
+  if (state.totalTimeTrackingInterval) {
+    stopTotalTimeTracking();
+  }
+  state.isProcessingVideo = false;
+  state.isModalVisible = false;
+  state.currentVideoUrl = null;
+  state.accumulatedTime = 0;
 };
 
-/**
- * Check if we're on a video watch page
- */
-const isVideoWatchPage = (): boolean => {
-  return window.location.pathname === '/watch' && window.location.search.includes('v=');
-};
-
+// ==================== DATA MANAGEMENT ====================
 /**
  * Load limits settings and usage data
  */
@@ -213,6 +266,31 @@ const saveUsageData = async (): Promise<void> => {
 };
 
 /**
+ * Clean up old usage data (keep only last 7 days)
+ */
+const cleanupOldUsageData = async (): Promise<void> => {
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - USAGE_DATA_RETENTION_DAYS);
+
+    const updatedUsageData: UsageData = {};
+
+    for (const [dateStr, data] of Object.entries(state.usageData)) {
+      const dataDate = new Date(dateStr);
+      if (dataDate >= cutoffDate) {
+        updatedUsageData[dateStr] = data;
+      }
+    }
+
+    state.usageData = updatedUsageData;
+    await saveUsageData();
+  } catch (error) {
+    console.error('[ProductiTube Limits] Failed to cleanup old usage data:', error);
+  }
+};
+
+// ==================== USAGE TRACKING ====================
+/**
  * Get videos watched today for a specific category
  */
 const getVideosWatchedToday = (categoryId: string): number => {
@@ -229,21 +307,52 @@ const getTimeWatchedToday = (categoryId: string): number => {
 };
 
 /**
+ * Get total time watched today (for Mode 3: Total Time-Based Limit only)
+ */
+const getTotalTimeWatchedToday = (): number => {
+  const today = getTodayString();
+  return state.usageData[today]?.[TOTAL_TIME_CATEGORY_ID]?.timeWatched || 0;
+};
+
+/**
+ * Refresh usage data from storage to ensure we have the latest values
+ */
+const refreshUsageData = async (): Promise<void> => {
+  try {
+    const usageData = await chrome.storage.local.get(USAGE_STORAGE_KEY);
+    state.usageData = usageData[USAGE_STORAGE_KEY] || {};
+  } catch (error) {
+    console.error('[ProductiTube Limits] Failed to refresh usage data:', error);
+  }
+};
+
+/**
  * Increment video count for a category
  */
 const incrementVideoCount = async (categoryId: string): Promise<void> => {
   const today = getTodayString();
 
-  if (!state.usageData[today]) {
-    state.usageData[today] = {};
-  }
+  try {
+    const currentData = await chrome.storage.local.get(USAGE_STORAGE_KEY);
+    const freshUsageData = currentData[USAGE_STORAGE_KEY] || {};
 
-  if (!state.usageData[today][categoryId]) {
-    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
-  }
+    if (!freshUsageData[today]) {
+      freshUsageData[today] = {};
+    }
 
-  state.usageData[today][categoryId].videoCount += 1;
-  await saveUsageData();
+    if (!freshUsageData[today][categoryId]) {
+      freshUsageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+    }
+
+    freshUsageData[today][categoryId].videoCount += 1;
+
+    await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: freshUsageData });
+
+    state.usageData = freshUsageData;
+  } catch (error) {
+    console.error('[ProductiTube Limits] Failed to increment video count:', error);
+    throw error;
+  }
 };
 
 /**
@@ -252,18 +361,72 @@ const incrementVideoCount = async (categoryId: string): Promise<void> => {
 const addTimeWatched = async (categoryId: string, minutes: number): Promise<void> => {
   const today = getTodayString();
 
-  if (!state.usageData[today]) {
-    state.usageData[today] = {};
-  }
+  try {
+    const currentData = await chrome.storage.local.get(USAGE_STORAGE_KEY);
+    const freshUsageData = currentData[USAGE_STORAGE_KEY] || {};
 
-  if (!state.usageData[today][categoryId]) {
-    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
-  }
+    if (!freshUsageData[today]) {
+      freshUsageData[today] = {};
+    }
 
-  state.usageData[today][categoryId].timeWatched += Math.round(minutes * 100) / 100;
-  await saveUsageData();
+    if (!freshUsageData[today][categoryId]) {
+      freshUsageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+    }
+
+    freshUsageData[today][categoryId].timeWatched += Math.round(minutes * 100) / 100;
+
+    await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: freshUsageData });
+
+    state.usageData = freshUsageData;
+  } catch (error) {
+    console.error('[ProductiTube Limits] Failed to add time watched:', error);
+    throw error;
+  }
 };
 
+/**
+ * Add time to total daily usage
+ */
+const addTotalTimeWatched = async (minutes: number): Promise<void> => {
+  const today = getTodayString();
+  const totalCategoryId = TOTAL_TIME_CATEGORY_ID;
+
+  try {
+    const currentData = await chrome.storage.local.get(USAGE_STORAGE_KEY);
+    const freshUsageData = currentData[USAGE_STORAGE_KEY] || {};
+
+    if (!freshUsageData[today]) {
+      freshUsageData[today] = {};
+    }
+
+    if (!freshUsageData[today][totalCategoryId]) {
+      freshUsageData[today][totalCategoryId] = { videoCount: 0, timeWatched: 0 };
+    }
+
+    freshUsageData[today][totalCategoryId].timeWatched += Math.round(minutes * 100) / 100;
+
+    await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: freshUsageData });
+
+    state.usageData = freshUsageData;
+  } catch (error) {
+    console.error('[ProductiTube Limits] Failed to add total time watched:', error);
+    throw error;
+  }
+};
+
+/**
+ * Reset total time usage data for today
+ */
+const resetTotalTimeUsage = async (): Promise<void> => {
+  const today = getTodayString();
+
+  if (state.usageData[today] && state.usageData[today][TOTAL_TIME_CATEGORY_ID]) {
+    delete state.usageData[today][TOTAL_TIME_CATEGORY_ID];
+    await saveUsageData();
+  }
+};
+
+// ==================== CATEGORY-BASED TIME TRACKING ====================
 /**
  * Start time tracking for the current video
  */
@@ -287,7 +450,7 @@ const startTimeTracking = (categoryId: string): void => {
     const category = categories.find((cat: VideoCategory) => cat.id === categoryId);
 
     if (category) {
-      const timeLimit = category.dailyTimeLimit || 60;
+      const timeLimit = category.dailyTimeLimit || DEFAULT_TIME_LIMIT_MINUTES;
       const remainingTime = timeLimit - currentTimeWatched;
 
       if (remainingTime > 0) {
@@ -322,7 +485,7 @@ const startTimeTracking = (categoryId: string): void => {
             video.pause();
           }
           showLimitBlockingModal(category);
-        }, 100);
+        }, QUICK_TIMEOUT_MS);
         return;
       }
     }
@@ -346,8 +509,9 @@ const startTimeTracking = (categoryId: string): void => {
 
       if (isCurrentlyPaused) {
         if (!state.wasVideoPaused) {
-          const elapsed = (Date.now() - state.videoStartTime) / (1000 * 60);
-          if (elapsed >= 0.17) {
+          const elapsed =
+            (Date.now() - state.videoStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
+          if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
             state.accumulatedTime += elapsed;
             await addTimeWatched(state.selectedCategoryId, elapsed);
           }
@@ -358,9 +522,10 @@ const startTimeTracking = (categoryId: string): void => {
       }
 
       state.wasVideoPaused = false;
-      const elapsed = (Date.now() - state.videoStartTime) / (1000 * 60);
+      const elapsed =
+        (Date.now() - state.videoStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
 
-      if (elapsed >= 0.17) {
+      if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
         state.accumulatedTime += elapsed;
         await addTimeWatched(state.selectedCategoryId, elapsed);
         state.videoStartTime = Date.now();
@@ -369,7 +534,7 @@ const startTimeTracking = (categoryId: string): void => {
         setupPreciseLimit();
       }
     }
-  }, 10000);
+  }, TIME_TRACKING_INTERVAL_MS);
 };
 
 /**
@@ -382,9 +547,10 @@ const stopTimeTracking = async (): Promise<void> => {
   }
 
   if (state.selectedCategoryId && state.videoStartTime && !state.wasVideoPaused) {
-    const elapsed = (Date.now() - state.videoStartTime) / (1000 * 60);
+    const elapsed =
+      (Date.now() - state.videoStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
 
-    if (elapsed >= 0.17) {
+    if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
       state.accumulatedTime += elapsed;
       await addTimeWatched(state.selectedCategoryId, elapsed);
     }
@@ -396,41 +562,11 @@ const stopTimeTracking = async (): Promise<void> => {
   state.accumulatedTime = 0;
 };
 
-/**
- * Get total time watched today (across all categories)
- */
-const getTotalTimeWatchedToday = (): number => {
-  const today = getTodayString();
-  const todayData = state.usageData[today] || {};
-
-  return Object.values(todayData).reduce((total, categoryData) => {
-    return total + (categoryData.timeWatched || 0);
-  }, 0);
-};
-
-/**
- * Add time to total daily usage
- */
-const addTotalTimeWatched = async (minutes: number): Promise<void> => {
-  const today = getTodayString();
-  const totalCategoryId = 'total-time-limit';
-
-  if (!state.usageData[today]) {
-    state.usageData[today] = {};
-  }
-
-  if (!state.usageData[today][totalCategoryId]) {
-    state.usageData[today][totalCategoryId] = { videoCount: 0, timeWatched: 0 };
-  }
-
-  state.usageData[today][totalCategoryId].timeWatched += Math.round(minutes * 100) / 100;
-  await saveUsageData();
-};
-
+// ==================== TOTAL TIME TRACKING ====================
 /**
  * Start total time tracking (for time-total mode)
  */
-const startTotalTimeTracking = (): void => {
+const startTotalTimeTracking = async (): Promise<void> => {
   if (state.totalTimeTrackingInterval) {
     clearInterval(state.totalTimeTrackingInterval);
   }
@@ -439,9 +575,11 @@ const startTotalTimeTracking = (): void => {
   state.totalTimeWasVideoPaused = false;
   state.totalTimeAccumulated = 0;
 
-  const setupPreciseLimit = () => {
+  const setupPreciseLimit = async () => {
+    await refreshUsageData();
+
     const currentTimeWatched = getTotalTimeWatchedToday();
-    const timeLimit = state.settings?.totalDailyTimeLimit || 60;
+    const timeLimit = state.settings?.totalDailyTimeLimit || DEFAULT_TIME_LIMIT_MINUTES;
     const remainingTime = timeLimit - currentTimeWatched;
 
     if (remainingTime > 0) {
@@ -475,12 +613,12 @@ const startTotalTimeTracking = (): void => {
           video.pause();
         }
         showTotalTimeLimitReachedModal();
-      }, 100);
+      }, QUICK_TIMEOUT_MS);
       return;
     }
   };
 
-  setupPreciseLimit();
+  await setupPreciseLimit();
 
   state.totalTimeTrackingInterval = window.setInterval(async () => {
     if (state.totalTimeStartTime) {
@@ -492,14 +630,16 @@ const startTotalTimeTracking = (): void => {
         state.totalTimeWasVideoPaused = false;
 
         clearPendingTimeouts();
-        setupPreciseLimit();
+        await setupPreciseLimit();
         return;
       }
 
       if (isCurrentlyPaused) {
         if (!state.totalTimeWasVideoPaused) {
-          const elapsed = (Date.now() - state.totalTimeStartTime) / (1000 * 60);
-          if (elapsed >= 0.17) {
+          const elapsed =
+            (Date.now() - state.totalTimeStartTime) /
+            (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
+          if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
             state.totalTimeAccumulated += elapsed;
             await addTotalTimeWatched(elapsed);
           }
@@ -510,18 +650,19 @@ const startTotalTimeTracking = (): void => {
       }
 
       state.totalTimeWasVideoPaused = false;
-      const elapsed = (Date.now() - state.totalTimeStartTime) / (1000 * 60);
+      const elapsed =
+        (Date.now() - state.totalTimeStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
 
-      if (elapsed >= 0.17) {
+      if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
         state.totalTimeAccumulated += elapsed;
         await addTotalTimeWatched(elapsed);
         state.totalTimeStartTime = Date.now();
 
         clearPendingTimeouts();
-        setupPreciseLimit();
+        await setupPreciseLimit();
       }
     }
-  }, 10000);
+  }, TIME_TRACKING_INTERVAL_MS);
 };
 
 /**
@@ -534,9 +675,10 @@ const stopTotalTimeTracking = async (): Promise<void> => {
   }
 
   if (state.totalTimeStartTime && !state.totalTimeWasVideoPaused) {
-    const elapsed = (Date.now() - state.totalTimeStartTime) / (1000 * 60);
+    const elapsed =
+      (Date.now() - state.totalTimeStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
 
-    if (elapsed >= 0.17) {
+    if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
       state.totalTimeAccumulated += elapsed;
       await addTotalTimeWatched(elapsed);
     }
@@ -547,6 +689,7 @@ const stopTotalTimeTracking = async (): Promise<void> => {
   state.totalTimeAccumulated = 0;
 };
 
+// ==================== MODAL FUNCTIONS ====================
 /**
  * Create and show the category selection modal
  */
@@ -554,8 +697,8 @@ const createCategoryModal = (): HTMLElement => {
   removeModal();
 
   const modal = document.createElement('div');
-  modal.id = 'productitube-category-modal';
-  modal.className = 'productitube-modal-overlay';
+  modal.id = MODAL_ID;
+  modal.className = MODAL_OVERLAY_CLASS;
 
   const activeMode = state.settings?.activeMode || 'video-count';
   const categories =
@@ -1349,8 +1492,8 @@ const createCategoryModal = (): HTMLElement => {
 
   const updateCountdown = () => {
     const { hours, minutes, seconds, totalMs } = getTimeUntilMidnight();
-    const countdownElement = modal.querySelector('#productitube-countdown-time');
-    const progressFill = modal.querySelector('#productitube-progress-fill') as HTMLElement;
+    const countdownElement = modal.querySelector(`#${COUNTDOWN_TIME_ID}`);
+    const progressFill = modal.querySelector(`#${PROGRESS_FILL_ID}`) as HTMLElement;
 
     if (countdownElement) {
       const timeSegments = countdownElement.querySelectorAll('.productitube-time-value');
@@ -1394,7 +1537,7 @@ const createCategoryModal = (): HTMLElement => {
     }
 
     if (progressFill) {
-      const totalDayMs = 24 * 60 * 60 * 1000;
+      const totalDayMs = TOTAL_DAY_MS;
       const elapsedMs = totalDayMs - totalMs;
       const progressPercent = (elapsedMs / totalDayMs) * 100;
       progressFill.style.width = `${Math.max(0, Math.min(100, progressPercent))}%`;
@@ -1403,7 +1546,7 @@ const createCategoryModal = (): HTMLElement => {
 
   updateCountdown();
 
-  countdownInterval = window.setInterval(updateCountdown, 1000);
+  countdownInterval = window.setInterval(updateCountdown, COUNTDOWN_UPDATE_INTERVAL_MS);
 
   (modal as HTMLElement & { __countdownInterval?: number }).__countdownInterval = countdownInterval;
 
@@ -1412,13 +1555,13 @@ const createCategoryModal = (): HTMLElement => {
     button.addEventListener('click', (e) => {
       const categoryId = (e.currentTarget as HTMLElement).dataset.categoryId;
       if (categoryId) {
-        modal.querySelectorAll('.productitube-category-option').forEach((btn) => {
-          btn.classList.remove('selected');
+        modal.querySelectorAll(`.${CATEGORY_OPTION_CLASS}`).forEach((btn) => {
+          btn.classList.remove(CATEGORY_SELECTED_CLASS);
         });
-        (e.currentTarget as HTMLElement).classList.add('selected');
+        (e.currentTarget as HTMLElement).classList.add(CATEGORY_SELECTED_CLASS);
         selectedCategoryId = categoryId;
 
-        const continueBtn = modal.querySelector('#productitube-continue-btn') as HTMLButtonElement;
+        const continueBtn = modal.querySelector(`#${CONTINUE_BUTTON_ID}`) as HTMLButtonElement;
         if (continueBtn) {
           continueBtn.disabled = false;
         }
@@ -1426,7 +1569,7 @@ const createCategoryModal = (): HTMLElement => {
     });
   });
 
-  const continueButton = modal.querySelector('#productitube-continue-btn') as HTMLButtonElement;
+  const continueButton = modal.querySelector(`#${CONTINUE_BUTTON_ID}`) as HTMLButtonElement;
   continueButton?.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1437,7 +1580,7 @@ const createCategoryModal = (): HTMLElement => {
 
     if (continueButton) {
       continueButton.disabled = true;
-      continueButton.textContent = 'Processing...';
+      continueButton.textContent = FEATURE_LABELS.PROCESSING;
     }
 
     const failsafeTimeout = setTimeout(() => {
@@ -1445,7 +1588,7 @@ const createCategoryModal = (): HTMLElement => {
         continueButton.disabled = false;
         continueButton.textContent = 'Continue';
       }
-    }, 10000);
+    }, FAILSAFE_TIMEOUT_MS);
 
     try {
       await handleCategorySelection(selectedCategoryId);
@@ -1461,9 +1604,9 @@ const createCategoryModal = (): HTMLElement => {
     }
   });
 
-  const homeButton = modal.querySelector('#productitube-home-btn');
+  const homeButton = modal.querySelector(`#${HOME_BUTTON_ID}`);
   homeButton?.addEventListener('click', () => {
-    window.location.href = '/';
+    window.location.href = YOUTUBE_HOME_URL;
   });
 
   return modal;
@@ -1541,7 +1684,7 @@ const showLimitBlockingModal = (category: VideoCategory): void => {
   removeModal();
 
   const message = document.createElement('div');
-  message.className = 'productitube-limit-blocking-message';
+  message.className = LIMIT_BLOCKING_MESSAGE_CLASS;
   message.innerHTML = `
     <div class="productitube-limit-blocking-content">
       <div class="productitube-limit-icon warning">
@@ -1703,7 +1846,7 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
   const isTimeMode = activeMode === 'time-category';
 
   const message = document.createElement('div');
-  message.className = 'productitube-limit-message';
+  message.className = LIMIT_MESSAGE_CLASS;
   message.innerHTML = `
     <div class="productitube-limit-content">
       <div class="productitube-limit-icon success">
@@ -1820,7 +1963,7 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
   document.head.appendChild(style);
   document.body.appendChild(message);
 
-  const okButton = message.querySelector('#productitube-limit-ok');
+  const okButton = message.querySelector(`#${LIMIT_OK_BUTTON_ID}`);
   okButton?.addEventListener('click', () => {
     resumeVideo();
     if (message.parentNode) {
@@ -1842,7 +1985,7 @@ const showTotalTimeLimitReachedModal = (): void => {
   const timeWatched = getTotalTimeWatchedToday();
 
   const message = document.createElement('div');
-  message.className = 'productitube-limit-blocking-message';
+  message.className = LIMIT_BLOCKING_MESSAGE_CLASS;
   message.innerHTML = `
     <div class="productitube-limit-blocking-content">
       <div class="productitube-limit-icon warning">
@@ -2009,7 +2152,7 @@ const removeModalOnly = (): void => {
     existingBlockingModal.parentNode.removeChild(existingBlockingModal);
   }
 
-  const scrollbarOverride = document.getElementById('productitube-scrollbar-override');
+  const scrollbarOverride = document.getElementById(SCROLLBAR_OVERRIDE_ID);
   if (scrollbarOverride) {
     scrollbarOverride.remove();
   }
@@ -2058,7 +2201,7 @@ const removeModal = (): void => {
     existingBlockingModal.parentNode.removeChild(existingBlockingModal);
   }
 
-  const scrollbarOverride = document.getElementById('productitube-scrollbar-override');
+  const scrollbarOverride = document.getElementById(SCROLLBAR_OVERRIDE_ID);
   if (scrollbarOverride) {
     scrollbarOverride.remove();
   }
@@ -2066,6 +2209,7 @@ const removeModal = (): void => {
   resetProcessingState();
 };
 
+// ==================== VIDEO CONTROL ====================
 /**
  * Pause the current video
  */
@@ -2088,6 +2232,7 @@ const resumeVideo = (): void => {
   state.isProcessingVideo = false;
 };
 
+// ==================== MAIN LOGIC ====================
 /**
  * Handle video load event
  */
@@ -2114,6 +2259,8 @@ const handleVideoLoad = async (): Promise<void> => {
     }
 
     if (activeMode === 'time-total') {
+      await refreshUsageData();
+
       const timeLimit = state.settings?.totalDailyTimeLimit || 60;
       const timeWatched = getTotalTimeWatchedToday();
 
@@ -2125,31 +2272,31 @@ const handleVideoLoad = async (): Promise<void> => {
             showTotalTimeLimitReachedModal();
           } else {
             if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
-              const timeoutId = window.setTimeout(waitForVideo, 500);
+              const timeoutId = window.setTimeout(waitForVideo, VIDEO_WAIT_TIMEOUT_MS);
               trackTimeout(timeoutId);
             }
           }
         };
 
-        const initialTimeoutId = window.setTimeout(waitForVideo, 1000);
+        const initialTimeoutId = window.setTimeout(waitForVideo, INITIAL_VIDEO_WAIT_MS);
         trackTimeout(initialTimeoutId);
         return;
       }
 
-      const waitForVideo = () => {
+      const waitForVideo = async () => {
         const video = document.querySelector('video') as HTMLVideoElement;
         if (video && video.readyState >= 1) {
-          startTotalTimeTracking();
+          await startTotalTimeTracking();
           state.isProcessingVideo = false;
         } else {
           if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
-            const timeoutId = window.setTimeout(waitForVideo, 500);
+            const timeoutId = window.setTimeout(waitForVideo, VIDEO_WAIT_TIMEOUT_MS);
             trackTimeout(timeoutId);
           }
         }
       };
 
-      const initialTimeoutId = window.setTimeout(waitForVideo, 1000);
+      const initialTimeoutId = window.setTimeout(waitForVideo, INITIAL_VIDEO_WAIT_MS);
       trackTimeout(initialTimeoutId);
       return;
     }
@@ -2179,13 +2326,13 @@ const handleVideoLoad = async (): Promise<void> => {
         state.isModalVisible = true;
       } else {
         if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
-          const timeoutId = window.setTimeout(waitForVideo, 500);
+          const timeoutId = window.setTimeout(waitForVideo, VIDEO_WAIT_TIMEOUT_MS);
           trackTimeout(timeoutId);
         }
       }
     };
 
-    const initialTimeoutId = window.setTimeout(waitForVideo, 1000);
+    const initialTimeoutId = window.setTimeout(waitForVideo, INITIAL_VIDEO_WAIT_MS);
     trackTimeout(initialTimeoutId);
   } catch (error) {
     console.error('[ProductiTube Limits] Error in handleVideoLoad:', error);
@@ -2193,6 +2340,7 @@ const handleVideoLoad = async (): Promise<void> => {
   }
 };
 
+// ==================== INITIALIZATION ====================
 /**
  * Initialize video limits feature
  */
@@ -2200,6 +2348,9 @@ export const initializeVideoLimits = (): (() => void) => {
   let videoObserver: MutationObserver | null = null;
   let navigationHandler: (() => void) | null = null;
   let messageListener: ((message: any, sender: any, sendResponse: any) => void) | null = null;
+  let storageListener:
+    | ((changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void)
+    | null = null;
 
   const startWatching = () => {
     videoObserver = new MutationObserver((mutations) => {
@@ -2252,22 +2403,54 @@ export const initializeVideoLimits = (): (() => void) => {
       }
 
       if (isVideoWatchPage()) {
-        setTimeout(handleVideoLoad, 1500);
+        setTimeout(handleVideoLoad, NAVIGATION_DELAY_MS);
       }
     };
 
     window.addEventListener('yt-navigate-finish', navigationHandler);
 
-    messageListener = (message, sender, sendResponse) => {
+    messageListener = async (message, sender, sendResponse) => {
       if (message.type === 'LIMITS_UPDATED') {
-        loadData().catch((error) =>
-          console.error('[ProductiTube Limits] Error reloading settings:', error)
-        );
+        const previousMode = state.settings?.activeMode;
+        const wasLimitsEnabled = state.settings?.isLimitsEnabled;
+
+        await loadData();
+
+        const currentMode = state.settings?.activeMode;
+        const isLimitsEnabled = state.settings?.isLimitsEnabled;
+
+        const modeChanged = previousMode !== currentMode;
+        const enabledStateChanged = wasLimitsEnabled !== isLimitsEnabled;
+
+        if (modeChanged || enabledStateChanged) {
+          if (previousMode === 'time-total' && (currentMode !== 'time-total' || !isLimitsEnabled)) {
+            await resetTotalTimeUsage();
+          }
+
+          if (currentMode === 'time-total' && previousMode !== 'time-total' && isLimitsEnabled) {
+            await resetTotalTimeUsage();
+          }
+        }
+
+        sendResponse({ success: true });
+      } else if (message.type === 'RESET_TOTAL_TIME_USAGE') {
+        await resetTotalTimeUsage();
         sendResponse({ success: true });
       }
     };
 
     chrome.runtime.onMessage.addListener(messageListener);
+
+    storageListener = (changes, areaName) => {
+      if (areaName === 'local' && changes[USAGE_STORAGE_KEY]) {
+        const newUsageData = changes[USAGE_STORAGE_KEY].newValue;
+        if (newUsageData) {
+          state.usageData = newUsageData;
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(storageListener);
 
     if (isVideoWatchPage()) {
       handleVideoLoad();
@@ -2291,6 +2474,11 @@ export const initializeVideoLimits = (): (() => void) => {
     if (messageListener) {
       chrome.runtime.onMessage.removeListener(messageListener);
       messageListener = null;
+    }
+
+    if (storageListener) {
+      chrome.storage.onChanged.removeListener(storageListener);
+      storageListener = null;
     }
 
     removeModal();
