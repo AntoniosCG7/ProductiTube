@@ -2347,7 +2347,13 @@ const handleVideoLoad = async (): Promise<void> => {
 export const initializeVideoLimits = (): (() => void) => {
   let videoObserver: MutationObserver | null = null;
   let navigationHandler: (() => void) | null = null;
-  let messageListener: ((message: any, sender: any, sendResponse: any) => void) | null = null;
+  let messageListener:
+    | ((
+        message: { type: string; [key: string]: unknown },
+        sender: chrome.runtime.MessageSender,
+        sendResponse: (response?: unknown) => void
+      ) => void)
+    | null = null;
   let storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void)
     | null = null;
