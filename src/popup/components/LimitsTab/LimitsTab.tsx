@@ -105,6 +105,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     favorite: FavoriteCategory;
     isOpen: boolean;
   } | null>(null);
+  const [saveTimeLimitConfirmation, setSaveTimeLimitConfirmation] = useState<{
+    newLimit: number;
+    currentLimit: number;
+    isOpen: boolean;
+  } | null>(null);
 
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
 
@@ -262,6 +267,31 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const cancelDeleteFavorite = () => {
     setDeleteFavoriteConfirmation(null);
+  };
+
+  const handleSaveTimeLimit = () => {
+    const currentLimit = limitsSettings.totalDailyTimeLimit || 60;
+    if (totalTimeLimit !== currentLimit) {
+      setSaveTimeLimitConfirmation({
+        newLimit: totalTimeLimit,
+        currentLimit: currentLimit,
+        isOpen: true,
+      });
+    } else {
+      setIsTotalLimitSaved(true);
+    }
+  };
+
+  const confirmSaveTimeLimit = () => {
+    if (!saveTimeLimitConfirmation) return;
+
+    updateLimitsSettings({ totalDailyTimeLimit: saveTimeLimitConfirmation.newLimit });
+    setIsTotalLimitSaved(true);
+    setSaveTimeLimitConfirmation(null);
+  };
+
+  const cancelSaveTimeLimit = () => {
+    setSaveTimeLimitConfirmation(null);
   };
 
   const handleFavoriteEditDialogOpenChange = (open: boolean) => {
@@ -1666,34 +1696,43 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       <div className="text-center">
                         <div className="text-xl font-bold mb-2">{formatTime(totalTimeWatched)}</div>
                         <div className="text-xs text-gray-600">
-                          of {formatTime(totalTimeLimit)} used today
+                          of {formatTime(limitsSettings.totalDailyTimeLimit || 60)} used today
                         </div>
                       </div>
 
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div
-                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalTimeWatched, totalTimeLimit))}`}
+                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60))}`}
                           style={{
-                            width: `${Math.min(getProgressPercentage(totalTimeWatched, totalTimeLimit), 100)}%`,
+                            width: `${Math.min(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60), 100)}%`,
                           }}
                         />
                       </div>
 
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">
-                          {totalTimeWatched >= totalTimeLimit ? (
+                          {totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? (
                             <span className="text-red-600 text-xs font-medium flex items-center gap-1">
                               <AlertCircle className="w-4 h-4" />
                               Time limit reached
                             </span>
                           ) : (
                             <div className="text-xs">
-                              {formatTime(totalTimeLimit - totalTimeWatched)} remaining
+                              {formatTime(
+                                (limitsSettings.totalDailyTimeLimit || 60) - totalTimeWatched
+                              )}{' '}
+                              remaining
                             </div>
                           )}
                         </span>
                         <span className="text-xs font-medium">
-                          {Math.round(getProgressPercentage(totalTimeWatched, totalTimeLimit))}%
+                          {Math.round(
+                            getProgressPercentage(
+                              totalTimeWatched,
+                              limitsSettings.totalDailyTimeLimit || 60
+                            )
+                          )}
+                          %
                         </span>
                       </div>
 
@@ -1727,10 +1766,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       </div>
                     </div>
                     <Button
-                      onClick={() => {
-                        updateLimitsSettings({ totalDailyTimeLimit: totalTimeLimit });
-                        setIsTotalLimitSaved(true);
-                      }}
+                      onClick={handleSaveTimeLimit}
                       className="h-8 px-3 text-xs text-black-600 bg-white border border-purple-200 hover:bg-white hover:border-purple-300  hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
                     >
                       <Save className="w-4 h-4 mr-1.5" />
@@ -2188,6 +2224,40 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               Load Categories
             </Button>
             <Button variant="outline" onClick={cancelLoadFavorites} className="h-9 text-sm">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save Time Limit Confirmation Dialog */}
+      <Dialog
+        open={saveTimeLimitConfirmation?.isOpen || false}
+        onOpenChange={(open) => !open && cancelSaveTimeLimit()}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <Save className="w-5 h-5 text-purple-500" />
+              Save Time Limit
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              Are you sure you want to change your daily time limit from{' '}
+              <strong>{formatTime(saveTimeLimitConfirmation?.currentLimit || 60)}</strong> to{' '}
+              <strong>{formatTime(saveTimeLimitConfirmation?.newLimit || 60)}</strong>?
+              <span className="block mt-2 text-purple-600 font-medium">
+                This will update your global YouTube time limit and apply immediately.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={confirmSaveTimeLimit}
+              className="flex-1 bg-purple-500 hover:bg-purple-600 active:bg-purple-700 h-9 text-sm"
+            >
+              Save Changes
+            </Button>
+            <Button variant="outline" onClick={cancelSaveTimeLimit} className="h-9 text-sm">
               Cancel
             </Button>
           </div>
