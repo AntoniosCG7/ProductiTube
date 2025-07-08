@@ -9,6 +9,7 @@ import { Header } from './components/Header/Header';
 import { Navigation } from './components/Navigation/Navigation';
 import { ControlsTab } from './components/ControlsTab/ControlsTab';
 import { LimitsTab } from './components/LimitsTab/LimitsTab';
+import { StatsTab } from './components/StatsTab/StatsTab';
 import { Footer } from './components/Footer/Footer';
 import { TabId } from '@/types/popup';
 import { AlertTriangle, Info } from 'lucide-react';
@@ -68,9 +69,7 @@ const Popup: React.FC = () => {
         {activeTab === 'limits' && (
           <LimitsTab limitsSettings={limitsSettings} updateLimitsSettings={updateLimitsSettings} />
         )}
-        {activeTab === 'stats' && (
-          <div className="p-4 text-center text-muted-foreground">Stats tab coming soon...</div>
-        )}
+        {activeTab === 'stats' && <StatsTab limitsSettings={limitsSettings} />}
       </div>
       <Footer activeControlsCount={activeControlsCount} />
     </div>
