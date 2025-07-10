@@ -395,15 +395,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     return Math.min((watched / limit) * 100, 100);
   };
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 100) return 'bg-red-500';
-    if (percentage >= 90) return 'bg-orange-500';
-    if (percentage >= 80) return 'bg-yellow-500';
+  const getProgressColor = (percentage: number, isExceeded?: boolean) => {
+    if (isExceeded || percentage >= 100) return 'bg-red-500';
+    if (percentage >= 90) return 'bg-red-400';
+    if (percentage >= 80) return 'bg-orange-500';
     if (percentage >= 70) return 'bg-amber-500';
-    if (percentage >= 60) return 'bg-lime-500';
-    if (percentage >= 50) return 'bg-green-500';
-    if (percentage >= 40) return 'bg-emerald-500';
-    return 'bg-green-500';
+    if (percentage >= 60) return 'bg-yellow-500';
+    if (percentage >= 40) return 'bg-lime-500';
+    if (percentage >= 20) return 'bg-green-500';
+    return 'bg-green-600';
   };
 
   const formatTime = (minutes: number) => {
@@ -1023,7 +1023,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div
-                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalVideosWatched, totalVideoLimit))}`}
+                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalVideosWatched, totalVideoLimit), totalVideosWatched >= totalVideoLimit)}`}
                           style={{
                             width: `${Math.min(getProgressPercentage(totalVideosWatched, totalVideoLimit), 100)}%`,
                           }}
@@ -1300,7 +1300,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(progressPercentage)}`}
+                                  className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(progressPercentage, isExceeded)}`}
                                   style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                                 />
                               </div>
@@ -1364,7 +1364,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div
-                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit))}`}
+                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit), Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100))}`}
                           style={{
                             width: `${Math.min(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit), 100)}%`,
                           }}
@@ -1644,7 +1644,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full transition-all ${getProgressColor(progressPercentage)}`}
+                                  className={`h-2 rounded-full transition-all ${getProgressColor(progressPercentage, isExceeded)}`}
                                   style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                                 />
                               </div>
@@ -1701,7 +1701,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div
-                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60))}`}
+                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60), totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60))}`}
                           style={{
                             width: `${Math.min(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60), 100)}%`,
                           }}
