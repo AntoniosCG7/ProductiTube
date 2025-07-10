@@ -1254,7 +1254,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                     }`}
                                   />
                                 </Button>
-                                {isExceeded && <AlertCircle className="w-3 h-3 text-red-500" />}
                                 {!category.isActive && (
                                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
                                     Disabled
@@ -1567,7 +1566,8 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         const timeWatched = category.timeWatchedToday || 0;
                         const timeLimit = category.dailyTimeLimit || 60;
                         const progressPercentage = getProgressPercentage(timeWatched, timeLimit);
-                        const isExceeded = timeWatched >= timeLimit;
+                        const isExceeded =
+                          Math.round(timeWatched * 100) >= Math.round(timeLimit * 100);
                         const remainingTime = Math.max(0, timeLimit - timeWatched);
 
                         return (
@@ -1596,7 +1596,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                     }`}
                                   />
                                 </Button>
-                                {isExceeded && <AlertCircle className="w-3 h-3 text-red-500" />}
                                 {!category.isActive && (
                                   <Badge variant="secondary" className="text-[10px] px-1 py-0">
                                     Disabled
