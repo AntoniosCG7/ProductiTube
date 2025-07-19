@@ -397,7 +397,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const getProgressColor = (percentage: number, isExceeded?: boolean) => {
     if (isExceeded || percentage >= 100) return 'bg-red-500';
-    if (percentage >= 90) return 'bg-red-400';
     if (percentage >= 80) return 'bg-orange-500';
     if (percentage >= 70) return 'bg-amber-500';
     if (percentage >= 60) return 'bg-yellow-500';
