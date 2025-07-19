@@ -332,27 +332,16 @@ const refreshUsageData = async (): Promise<void> => {
 const incrementVideoCount = async (categoryId: string): Promise<void> => {
   const today = getTodayString();
 
-  try {
-    const currentData = await chrome.storage.local.get(USAGE_STORAGE_KEY);
-    const freshUsageData = currentData[USAGE_STORAGE_KEY] || {};
-
-    if (!freshUsageData[today]) {
-      freshUsageData[today] = {};
-    }
-
-    if (!freshUsageData[today][categoryId]) {
-      freshUsageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
-    }
-
-    freshUsageData[today][categoryId].videoCount += 1;
-
-    await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: freshUsageData });
-
-    state.usageData = freshUsageData;
-  } catch (error) {
-    console.error('[ProductiTube Limits] Failed to increment video count:', error);
-    throw error;
+  if (!state.usageData[today]) {
+    state.usageData[today] = {};
   }
+
+  if (!state.usageData[today][categoryId]) {
+    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+  }
+
+  state.usageData[today][categoryId].videoCount += 1;
+  await saveUsageData();
 };
 
 /**
@@ -361,27 +350,16 @@ const incrementVideoCount = async (categoryId: string): Promise<void> => {
 const addTimeWatched = async (categoryId: string, minutes: number): Promise<void> => {
   const today = getTodayString();
 
-  try {
-    const currentData = await chrome.storage.local.get(USAGE_STORAGE_KEY);
-    const freshUsageData = currentData[USAGE_STORAGE_KEY] || {};
-
-    if (!freshUsageData[today]) {
-      freshUsageData[today] = {};
-    }
-
-    if (!freshUsageData[today][categoryId]) {
-      freshUsageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
-    }
-
-    freshUsageData[today][categoryId].timeWatched += Math.round(minutes * 100) / 100;
-
-    await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: freshUsageData });
-
-    state.usageData = freshUsageData;
-  } catch (error) {
-    console.error('[ProductiTube Limits] Failed to add time watched:', error);
-    throw error;
+  if (!state.usageData[today]) {
+    state.usageData[today] = {};
   }
+
+  if (!state.usageData[today][categoryId]) {
+    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+  }
+
+  state.usageData[today][categoryId].timeWatched += Math.round(minutes * 100) / 100;
+  await saveUsageData();
 };
 
 /**
@@ -391,27 +369,16 @@ const addTotalTimeWatched = async (minutes: number): Promise<void> => {
   const today = getTodayString();
   const totalCategoryId = TOTAL_TIME_CATEGORY_ID;
 
-  try {
-    const currentData = await chrome.storage.local.get(USAGE_STORAGE_KEY);
-    const freshUsageData = currentData[USAGE_STORAGE_KEY] || {};
-
-    if (!freshUsageData[today]) {
-      freshUsageData[today] = {};
-    }
-
-    if (!freshUsageData[today][totalCategoryId]) {
-      freshUsageData[today][totalCategoryId] = { videoCount: 0, timeWatched: 0 };
-    }
-
-    freshUsageData[today][totalCategoryId].timeWatched += Math.round(minutes * 100) / 100;
-
-    await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: freshUsageData });
-
-    state.usageData = freshUsageData;
-  } catch (error) {
-    console.error('[ProductiTube Limits] Failed to add total time watched:', error);
-    throw error;
+  if (!state.usageData[today]) {
+    state.usageData[today] = {};
   }
+
+  if (!state.usageData[today][totalCategoryId]) {
+    state.usageData[today][totalCategoryId] = { videoCount: 0, timeWatched: 0 };
+  }
+
+  state.usageData[today][totalCategoryId].timeWatched += Math.round(minutes * 100) / 100;
+  await saveUsageData();
 };
 
 /**
@@ -427,6 +394,7 @@ const resetTotalTimeUsage = async (): Promise<void> => {
 };
 
 // ==================== CATEGORY-BASED TIME TRACKING ====================
+
 /**
  * Start time tracking for the current video
  */
@@ -454,7 +422,7 @@ const startTimeTracking = (categoryId: string): void => {
       const remainingTime = timeLimit - currentTimeWatched;
 
       if (remainingTime > 0) {
-        const remainingMs = remainingTime * 60 * 1000;
+        const remainingMs = remainingTime * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
 
         const limitTimeoutId = window.setTimeout(async () => {
           if (state.timeTrackingInterval) {
@@ -566,7 +534,7 @@ const stopTimeTracking = async (): Promise<void> => {
 /**
  * Start total time tracking (for time-total mode)
  */
-const startTotalTimeTracking = async (): Promise<void> => {
+const startTotalTimeTracking = (): void => {
   if (state.totalTimeTrackingInterval) {
     clearInterval(state.totalTimeTrackingInterval);
   }
@@ -575,15 +543,13 @@ const startTotalTimeTracking = async (): Promise<void> => {
   state.totalTimeWasVideoPaused = false;
   state.totalTimeAccumulated = 0;
 
-  const setupPreciseLimit = async () => {
-    await refreshUsageData();
-
+  const setupPreciseLimit = () => {
     const currentTimeWatched = getTotalTimeWatchedToday();
     const timeLimit = state.settings?.totalDailyTimeLimit || DEFAULT_TIME_LIMIT_MINUTES;
     const remainingTime = timeLimit - currentTimeWatched;
 
     if (remainingTime > 0) {
-      const remainingMs = remainingTime * 60 * 1000;
+      const remainingMs = remainingTime * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
 
       const limitTimeoutId = window.setTimeout(async () => {
         if (state.totalTimeTrackingInterval) {
@@ -618,7 +584,7 @@ const startTotalTimeTracking = async (): Promise<void> => {
     }
   };
 
-  await setupPreciseLimit();
+  setupPreciseLimit();
 
   state.totalTimeTrackingInterval = window.setInterval(async () => {
     if (state.totalTimeStartTime) {
@@ -630,7 +596,7 @@ const startTotalTimeTracking = async (): Promise<void> => {
         state.totalTimeWasVideoPaused = false;
 
         clearPendingTimeouts();
-        await setupPreciseLimit();
+        setupPreciseLimit();
         return;
       }
 
@@ -659,7 +625,7 @@ const startTotalTimeTracking = async (): Promise<void> => {
         state.totalTimeStartTime = Date.now();
 
         clearPendingTimeouts();
-        await setupPreciseLimit();
+        setupPreciseLimit();
       }
     }
   }, TIME_TRACKING_INTERVAL_MS);
@@ -1981,7 +1947,6 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
 const showTotalTimeLimitReachedModal = (): void => {
   removeModal();
 
-  const timeLimit = state.settings?.totalDailyTimeLimit || 60;
   const timeWatched = getTotalTimeWatchedToday();
 
   const message = document.createElement('div');
@@ -1995,10 +1960,10 @@ const showTotalTimeLimitReachedModal = (): void => {
           <path d="m9 9 6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <h3>Daily Time Limit Reached</h3>
+      <h3>That's a wrap for today!</h3>
       <div class="productitube-limit-text">
-        <p>You've reached your daily YouTube time limit of <strong>${formatTime(timeLimit)}</strong>.</p>
-        <p>You've watched <strong>${formatTime(timeWatched)}</strong> today. Time to take a break!</p>
+        <p>You've watched <strong>${formatTime(timeWatched)}</strong> of YouTube today.</p>
+        <p>Time to explore the world beyond the screen! 🌟</p>
       </div>
       <div class="productitube-limit-actions">
         <button id="productitube-home-btn" class="productitube-btn-primary">Go to Home Feed</button>
@@ -2283,10 +2248,10 @@ const handleVideoLoad = async (): Promise<void> => {
         return;
       }
 
-      const waitForVideo = async () => {
+      const waitForVideo = () => {
         const video = document.querySelector('video') as HTMLVideoElement;
         if (video && video.readyState >= 1) {
-          await startTotalTimeTracking();
+          startTotalTimeTracking();
           state.isProcessingVideo = false;
         } else {
           if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
