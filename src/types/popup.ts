@@ -17,6 +17,7 @@ export interface ControlsTabProps {
 
 export interface FooterProps {
   activeControlsCount: number;
+  onResetSettings: () => void;
 }
 
 export interface CategorySectionProps {

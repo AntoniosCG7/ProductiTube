@@ -17,7 +17,7 @@ import './styles/popup.css';
 
 const Popup: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState<TabId>('controls');
-  const [settings, updateSettings, error, isRateLimited] = useSettings();
+  const [settings, updateSettings, error, isRateLimited, resetSettings] = useSettings();
   const { limitsSettings, updateLimitsSettings, error: limitsError } = useLimitsSettings();
 
   const updateSetting = React.useCallback(
@@ -45,7 +45,7 @@ const Popup: React.FC = () => {
   const combinedError = error || limitsError;
 
   return (
-    <div className="w-96 h-[600px] overflow-hidden overflow-x-hidden flex flex-col">
+    <div className="w-96 h-[600px] overflow-hidden overflow-x-hidden flex flex-col bg-white">
       <Header />
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -71,7 +71,7 @@ const Popup: React.FC = () => {
         )}
         {/* {activeTab === 'stats' && <StatsTab limitsSettings={limitsSettings} />} */}
       </div>
-      <Footer activeControlsCount={activeControlsCount} />
+      <Footer activeControlsCount={activeControlsCount} onResetSettings={resetSettings} />
     </div>
   );
 };

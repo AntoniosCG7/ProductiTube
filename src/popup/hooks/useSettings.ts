@@ -267,5 +267,39 @@ export const useSettings = () => {
     };
   }, []);
 
-  return [settings, updateSettings, error, isRateLimited] as const;
+  /**
+   * Resets all settings to their default values
+   */
+  const resetSettings = useCallback(async () => {
+    try {
+      await chrome.storage.sync.set({
+        [SETTINGS_STORAGE_KEY]: defaultSettings,
+      });
+      setSettings(defaultSettings);
+      rateTracker.recordWrite();
+      setError(null);
+
+      const tabs = await chrome.tabs.query({ url: '*://*.youtube.com/*' });
+      for (const tab of tabs) {
+        if (tab.id) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              type: 'UPDATE_SETTINGS',
+              settings: defaultSettings,
+            });
+          } catch {
+            console.error('Failed to send message to content script:', error);
+            setError(
+              error instanceof Error ? error : new Error('Failed to send message to content script')
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+      setError(error instanceof Error ? error : new Error('Failed to reset settings'));
+    }
+  }, []);
+
+  return [settings, updateSettings, error, isRateLimited, resetSettings] as const;
 };
