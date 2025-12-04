@@ -48,15 +48,17 @@ Control what you see on video pages:
 - **Disable Autoplay** — Stop videos from automatically starting
 - **Hide End Screens** — Remove cards and video suggestions at the end
 
-### ⏱️ Set Time Limits
+### ⏱️ Set Limits
 
-- Set daily watch time limits by category
-- Track your viewing habits
-- Get notified when approaching limits
+Create custom categories and control your daily YouTube usage:
+
+- **Video Count Mode** — Limit how many videos you can watch per category
+- **Time Mode** — Limit watch time (in minutes) per category
+- **Total Daily Limit** — Set a global time cap for all YouTube watching
 
 ## 📦 Installation
 
-### From Chrome Web Store (Recommended)
+### From Chrome Web Store
 
 1. Visit the [Chrome Web Store](#) _(link coming soon)_
 2. Click **"Add to Chrome"**
