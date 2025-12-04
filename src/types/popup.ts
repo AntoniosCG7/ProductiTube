@@ -1,7 +1,8 @@
+// import {LimitsSettings } from './index';
 import { Settings } from './index';
 import { featureCategories } from '../popup/constants/featureCategories';
 
-export type TabId = 'controls' | 'limits' | 'stats';
+export type TabId = 'controls' | 'limits'; // | 'stats';
 
 export interface NavigationProps {
   activeTab: TabId;
@@ -24,3 +25,8 @@ export interface CategorySectionProps {
   updateSetting: ControlsTabProps['updateSetting'];
   isLoading?: boolean;
 }
+
+// export interface StatsTabProps {
+//   limitsSettings?: LimitsSettings;
+//   className?: string;
+// }

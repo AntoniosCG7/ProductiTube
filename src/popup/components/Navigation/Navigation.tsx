@@ -1,12 +1,12 @@
 import React from 'react';
-import { Eye, Clock, BarChart3 } from 'lucide-react';
+import { Eye, Clock } from 'lucide-react';
 import { NavigationProps, TabId } from '@/types/popup';
 
 export const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
     { value: 'controls', icon: Eye, label: 'CONTROLS' },
     { value: 'limits', icon: Clock, label: 'LIMITS' },
-    { value: 'stats', icon: BarChart3, label: 'STATS' },
+    // { value: 'stats', icon: BarChart3, label: 'STATS' },
   ] as const;
 
   return (
