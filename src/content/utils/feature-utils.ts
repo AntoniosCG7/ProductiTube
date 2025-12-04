@@ -148,7 +148,12 @@ const FEATURES: Record<string, FeatureConfig> = {
   },
   'hide-end-screen-feed': {
     cssClass: 'productitube-hide-end-screen-feed',
-    selectors: ['.ytp-fullscreen-grid-stills-container'],
+    selectors: [
+      '.ytp-endscreen-content',
+      '.ytp-fullscreen-grid-stills-container',
+      '.ytp-videowall-still',
+      '.ytp-suggestion-set',
+    ],
   },
   'blur-thumbnails': {
     cssClass: 'productitube-blur-thumbnails',
