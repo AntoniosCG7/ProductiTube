@@ -38,13 +38,13 @@ const FEATURES: Record<string, FeatureConfig> = {
   'hide-explore': {
     cssClass: 'productitube-hide-explore',
     selectors: [
-      '#sections > ytd-guide-section-renderer:nth-child(3)',
+      '#sections > ytd-guide-section-renderer:nth-child(4)',
       'ytd-browse[page-subtype="trending"]',
     ],
   },
   'hide-more-youtube': {
     cssClass: 'productitube-hide-more-youtube',
-    selectors: ['#sections > ytd-guide-section-renderer:nth-child(4)'],
+    selectors: ['#sections > ytd-guide-section-renderer:nth-child(5)'],
   },
   'hide-top-header': {
     cssClass: 'productitube-hide-top-header',
