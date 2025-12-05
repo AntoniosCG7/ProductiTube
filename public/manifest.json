@@ -3,7 +3,7 @@
   "name": "ProductiTube",
   "version": "1.0.0",
   "description": "Your YouTube, Your Rules",
-  "permissions": ["storage", "scripting", "tabs", "activeTab"],
+  "permissions": ["storage", "tabs", "activeTab"],
   "host_permissions": ["*://*.youtube.com/*"],
   "background": {
     "service_worker": "background.js"
