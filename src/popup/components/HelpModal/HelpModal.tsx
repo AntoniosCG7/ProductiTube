@@ -16,7 +16,8 @@ interface HelpModalProps {
 }
 
 const EXTENSION_VERSION = '1.0.0';
-const CHROME_STORE_URL = 'https://chrome.google.com/webstore';
+const CHROME_STORE_URL =
+  'https://chromewebstore.google.com/detail/fldinfajgbahlbnnaimpgofhgbcmjdhp?utm_source=item-share-cb';
 const REPORT_EMAIL = 'support@productitube.com';
 
 export const HelpModal: React.FC<HelpModalProps> = ({ open, onOpenChange }) => {
