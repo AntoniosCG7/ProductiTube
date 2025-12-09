@@ -89,7 +89,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Found a bug?** [Open an issue](https://github.com/AntoniosCG7/ProductiTube/issues)
 - **Have a feature request?** [Start a discussion](https://github.com/AntoniosCG7/ProductiTube/discussions)
-- **Need help?** Email me at support@productitube.com
+- **Need help?** Email me at productitubehelp@gmail.com
 
 ---
 
