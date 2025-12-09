@@ -60,7 +60,7 @@ Create custom categories and control your daily YouTube usage:
 
 ### From Chrome Web Store
 
-1. Visit the [Chrome Web Store](#) _(link coming soon)_
+1. Visit the [Chrome Web Store](https://chromewebstore.google.com/detail/fldinfajgbahlbnnaimpgofhgbcmjdhp)
 2. Click **"Add to Chrome"**
 3. Click **"Add Extension"** to confirm
 
