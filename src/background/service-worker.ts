@@ -1,38 +1,41 @@
 const SETTINGS_STORAGE_KEY = 'youtube_settings';
 const LIMITS_STORAGE_KEY = 'youtube_limits_settings';
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.set({
-    [SETTINGS_STORAGE_KEY]: {
-      hideHomeFeed: false,
-      hideShorts: false,
-      hideSubscriptions: false,
-      hideExplore: false,
-      hideMoreFromYoutube: false,
-      disableAutoplay: false,
-      hideEndScreenCards: false,
-      hideEndScreenFeed: false,
-      hideChannel: false,
-      hideVideoInfo: false,
-      hideDescription: false,
-      hideButtonsBar: false,
-      hideComments: false,
-      hideTopHeader: false,
-      hideNotifications: false,
-      hideRecommended: false,
-      hideLiveChat: false,
-      hidePlaylist: false,
-    },
-  });
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'install') {
+    await chrome.storage.sync.set({
+      [SETTINGS_STORAGE_KEY]: {
+        hideHomeFeed: false,
+        hideShorts: false,
+        hideSubscriptions: false,
+        hideExplore: false,
+        hideMoreFromYoutube: false,
+        disableAutoplay: false,
+        hideEndScreenCards: false,
+        hideEndScreenFeed: false,
+        hideChannel: false,
+        hideVideoInfo: false,
+        hideDescription: false,
+        hideButtonsBar: false,
+        hideComments: false,
+        hideTopHeader: false,
+        hideNotifications: false,
+        hideRecommended: false,
+        hideLiveChat: false,
+        hidePlaylist: false,
+        blurThumbnails: false,
+      },
+    });
 
-  chrome.storage.sync.set({
-    [LIMITS_STORAGE_KEY]: {
-      isLimitsEnabled: false,
-      showCategoryPrompt: false,
-      blockWhenExceeded: false,
-      categories: [],
-    },
-  });
+    await chrome.storage.sync.set({
+      [LIMITS_STORAGE_KEY]: {
+        isLimitsEnabled: false,
+        showCategoryPrompt: false,
+        blockWhenExceeded: false,
+        categories: [],
+      },
+    });
+  }
 });
 
 // Listen for messages from content script or popup
