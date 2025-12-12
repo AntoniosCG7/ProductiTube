@@ -15,7 +15,7 @@ interface HelpModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const EXTENSION_VERSION = '1.0.0';
+const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 const CHROME_STORE_URL =
   'https://chromewebstore.google.com/detail/fldinfajgbahlbnnaimpgofhgbcmjdhp?utm_source=item-share-cb';
 const REPORT_EMAIL = 'productitubehelp@gmail.com';

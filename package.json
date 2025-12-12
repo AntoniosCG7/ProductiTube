@@ -1,6 +1,6 @@
 {
   "name": "productitube",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Your YouTube, Your Rules",
   "scripts": {
     "dev": "vite",
