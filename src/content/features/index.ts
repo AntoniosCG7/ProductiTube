@@ -53,6 +53,7 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
 // Store cleanup functions
 const cleanupFunctions = new Map<keyof Settings, () => void>();
 let videoLimitsCleanup: (() => void) | undefined;
+let videoLimitsInitialized = false;
 
 // Utility to re-run features on navigation
 function watchYouTubeNavigation(onNavigate: () => void) {
@@ -92,10 +93,11 @@ export const initializeFeatures = async () => {
       }
     });
 
-    if (videoLimitsCleanup) {
-      videoLimitsCleanup();
+    // Only initialize video limits once - it has its own storage listener for updates
+    if (!videoLimitsInitialized) {
+      videoLimitsCleanup = initializeVideoLimits();
+      videoLimitsInitialized = true;
     }
-    videoLimitsCleanup = initializeVideoLimits();
 
     // Reapply selected features on YouTube page navigation
     watchYouTubeNavigation(() => {
