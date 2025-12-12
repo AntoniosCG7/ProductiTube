@@ -162,7 +162,7 @@ const FEATURES: Record<string, FeatureConfig> = {
       '#thumbnail',
       '.ytThumbnailViewModelImage',
       'yt-thumbnail-view-model',
-      '.ytCoreImageHost',
+      '.ytCoreImageHost:not(.yt-core-attributed-string__image-element)',
       'ytd-reel-item-renderer img',
       'ytd-reel-shelf-renderer img',
       'ytd-rich-shelf-renderer img',
