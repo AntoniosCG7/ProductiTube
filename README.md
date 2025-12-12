@@ -14,7 +14,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/manifest-v3-blue" alt="Manifest V3">
-  <img src="https://img.shields.io/badge/version-1.0.0-green" alt="Version 1.0.0">
+  <img src="https://img.shields.io/badge/version-1.0.1-green" alt="Version 1.0.1">
   <img src="https://img.shields.io/badge/license-MIT-yellow" alt="License MIT">
 </p>
 
@@ -22,39 +22,44 @@
 
 ## 🎯 What is ProductiTube?
 
-Tired of endless distractions on YouTube? ProductiTube is a Chrome extension that helps you reclaim your focus and make YouTube work for you. Whether you're studying, working, or just trying to stay productive, ProductiTube gives you the tools to eliminate distractions and take control.
+Tired of endless distractions on YouTube? ProductiTube is a Chrome extension that helps you reclaim your focus and make YouTube work for you. Whether you're studying, working, or just trying to stay productive, ProductiTube gives you the tools to eliminate distractions and take control of your viewing time.
 
 ## ✨ Features
 
-### 🚫 Hide Distractions
+### ⏱️ Smart Viewing Limits
 
-Remove elements that pull your attention away:
+Take control of your YouTube time with powerful limit controls:
 
-- **Home Feed & Shorts** — Eliminate the endless scroll and short-form content
-- **Recommendations** — Hide suggested videos in the sidebar and end screens
-- **Comments & Live Chat** — Remove social elements that break focus
-- **Notifications** — Hide alerts and the notification bell
-
-### 👁️ Customize Your View
-
-Control what you see on video pages:
-
-- **Video Details** — Hide titles, descriptions, channel info, and action buttons
-- **Blur Thumbnails** — Reduce visual distractions from video previews
-- **Header & Playlists** — Remove navigation bar and playlist panels
-
-### ▶️ Control Playback
-
-- **Disable Autoplay** — Stop videos from automatically starting
-- **Hide End Screens** — Remove cards and video suggestions at the end
-
-### ⏱️ Set Limits
-
-Create custom categories and control your daily YouTube usage:
-
-- **Video Count Mode** — Limit how many videos you can watch per category
-- **Time Mode** — Limit watch time (in minutes) per category
+- **Custom Categories** — Create personalized categories like "Entertainment," "Education," "Music," etc.
+- **Video Count Mode** — Set a maximum number of videos per category per day
+- **Time Mode** — Set daily time limits (in minutes) for each category
 - **Total Daily Limit** — Set a global time cap for all YouTube watching
+- **Real-Time Tracking** — See exactly how much time you've spent and videos you've watched
+- **Smart Notifications** — Get alerts when approaching your limits
+
+### 🚫 Customizable Controls
+
+Hide any element that distracts you:
+
+- Hide Home Feed
+- Hide Shorts
+- Hide Subscriptions
+- Hide Explore
+- Hide More from YouTube
+- Disable Autoplay
+- Hide End Screen Cards
+- Hide End Screen Feed
+- Hide Channel
+- Hide Video Info
+- Hide Description
+- Hide Buttons Bar
+- Hide Comments
+- Blur Thumbnails
+- Hide Top Header
+- Hide Notifications
+- Hide Recommended
+- Hide Live Chat
+- Hide Playlist
 
 ## 📦 Installation
 
@@ -66,11 +71,10 @@ Create custom categories and control your daily YouTube usage:
 
 ## 🚀 Usage
 
-1. **Click the ProductiTube icon** in your Chrome toolbar
-2. **Controls tab** — Toggle features on/off
-3. **Limits tab** — Set time limits for video categories
-
-Changes take effect immediately. Refresh the page if needed.
+1. Click the ProductiTube icon in your Chrome toolbar
+2. Use the Controls tab to toggle features on/off
+3. Use the Limits tab to create categories and set daily limits
+4. Changes take effect immediately
 
 ## 🔒 Privacy
 
@@ -89,7 +93,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Found a bug?** [Open an issue](https://github.com/AntoniosCG7/ProductiTube/issues)
 - **Have a feature request?** [Start a discussion](https://github.com/AntoniosCG7/ProductiTube/discussions)
-- **Need help?** Email me at productitubehelp@gmail.com
+- **Need help?** Email us at productitubesupport@gmail.com
 
 ---
 
