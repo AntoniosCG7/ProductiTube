@@ -425,6 +425,10 @@ const startTimeTracking = (categoryId: string): void => {
         const remainingMs = remainingTime * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
 
         const limitTimeoutId = window.setTimeout(async () => {
+          if (!isVideoWatchPage() || state.selectedCategoryId !== categoryId) {
+            return;
+          }
+
           if (state.timeTrackingInterval) {
             clearInterval(state.timeTrackingInterval);
             state.timeTrackingInterval = null;
@@ -448,6 +452,10 @@ const startTimeTracking = (categoryId: string): void => {
         trackTimeout(limitTimeoutId);
       } else {
         setTimeout(async () => {
+          // Safeguard: Only show limit modal if still on video page
+          if (!isVideoWatchPage()) {
+            return;
+          }
           const video = document.querySelector('video') as HTMLVideoElement;
           if (video && !video.paused) {
             video.pause();
@@ -509,6 +517,8 @@ const startTimeTracking = (categoryId: string): void => {
  * Stop time tracking
  */
 const stopTimeTracking = async (): Promise<void> => {
+  clearPendingTimeouts();
+
   if (state.timeTrackingInterval) {
     clearInterval(state.timeTrackingInterval);
     state.timeTrackingInterval = null;
@@ -552,6 +562,10 @@ const startTotalTimeTracking = (): void => {
       const remainingMs = remainingTime * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
 
       const limitTimeoutId = window.setTimeout(async () => {
+        if (!isVideoWatchPage() || !state.totalTimeStartTime) {
+          return;
+        }
+
         if (state.totalTimeTrackingInterval) {
           clearInterval(state.totalTimeTrackingInterval);
           state.totalTimeTrackingInterval = null;
@@ -574,6 +588,10 @@ const startTotalTimeTracking = (): void => {
       trackTimeout(limitTimeoutId);
     } else {
       setTimeout(async () => {
+        // Safeguard: Only show limit modal if still on video page
+        if (!isVideoWatchPage()) {
+          return;
+        }
         const video = document.querySelector('video') as HTMLVideoElement;
         if (video && !video.paused) {
           video.pause();
@@ -635,6 +653,8 @@ const startTotalTimeTracking = (): void => {
  * Stop total time tracking
  */
 const stopTotalTimeTracking = async (): Promise<void> => {
+  clearPendingTimeouts();
+
   if (state.totalTimeTrackingInterval) {
     clearInterval(state.totalTimeTrackingInterval);
     state.totalTimeTrackingInterval = null;
