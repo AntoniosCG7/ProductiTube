@@ -24,6 +24,7 @@ const FEATURES: Record<string, FeatureConfig> = {
       'ytd-rich-shelf-renderer',
       'ytd-reel-shelf-renderer',
       '#shorts-container',
+      '#items > ytd-mini-guide-entry-renderer:nth-child(2)',
       'ytd-guide-entry-renderer:has([title="Shorts"])',
     ],
   },
