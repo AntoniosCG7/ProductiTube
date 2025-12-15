@@ -151,6 +151,38 @@ const isVideoWatchPage = (): boolean => {
 };
 
 /**
+ * Check if an ad is currently playing on YouTube
+ * This checks for various ad indicators in the DOM
+ */
+const isAdPlaying = (): boolean => {
+  const playerContainer = document.querySelector('.html5-video-player');
+  if (playerContainer?.classList.contains('ad-showing')) {
+    return true;
+  }
+
+  const adOverlay = document.querySelector('.ytp-ad-player-overlay');
+  if (adOverlay) {
+    return true;
+  }
+
+  const adModule = document.querySelector('.ytp-ad-module');
+  if (adModule && adModule.children.length > 0) {
+    const adText = document.querySelector('.ytp-ad-text');
+    const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern');
+    if (adText || skipButton) {
+      return true;
+    }
+  }
+
+  const adPreview = document.querySelector('.ytp-ad-preview-container');
+  if (adPreview && window.getComputedStyle(adPreview).display !== 'none') {
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * Get time remaining until midnight (12 AM)
  */
 const getTimeUntilMidnight = (): {
@@ -452,7 +484,6 @@ const startTimeTracking = (categoryId: string): void => {
         trackTimeout(limitTimeoutId);
       } else {
         setTimeout(async () => {
-          // Safeguard: Only show limit modal if still on video page
           if (!isVideoWatchPage()) {
             return;
           }
@@ -473,8 +504,11 @@ const startTimeTracking = (categoryId: string): void => {
     if (state.selectedCategoryId && state.videoStartTime) {
       const video = document.querySelector('video') as HTMLVideoElement;
       const isCurrentlyPaused = !video || video.paused;
+      const isCurrentlyShowingAd = isAdPlaying();
 
-      if (state.wasVideoPaused && !isCurrentlyPaused) {
+      const shouldPauseTracking = isCurrentlyPaused || isCurrentlyShowingAd;
+
+      if (state.wasVideoPaused && !shouldPauseTracking) {
         state.videoStartTime = Date.now();
         state.wasVideoPaused = false;
 
@@ -483,7 +517,7 @@ const startTimeTracking = (categoryId: string): void => {
         return;
       }
 
-      if (isCurrentlyPaused) {
+      if (shouldPauseTracking) {
         if (!state.wasVideoPaused) {
           const elapsed =
             (Date.now() - state.videoStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
@@ -608,8 +642,11 @@ const startTotalTimeTracking = (): void => {
     if (state.totalTimeStartTime) {
       const video = document.querySelector('video') as HTMLVideoElement;
       const isCurrentlyPaused = !video || video.paused;
+      const isCurrentlyShowingAd = isAdPlaying();
 
-      if (state.totalTimeWasVideoPaused && !isCurrentlyPaused) {
+      const shouldPauseTracking = isCurrentlyPaused || isCurrentlyShowingAd;
+
+      if (state.totalTimeWasVideoPaused && !shouldPauseTracking) {
         state.totalTimeStartTime = Date.now();
         state.totalTimeWasVideoPaused = false;
 
@@ -618,7 +655,7 @@ const startTotalTimeTracking = (): void => {
         return;
       }
 
-      if (isCurrentlyPaused) {
+      if (shouldPauseTracking) {
         if (!state.totalTimeWasVideoPaused) {
           const elapsed =
             (Date.now() - state.totalTimeStartTime) /
