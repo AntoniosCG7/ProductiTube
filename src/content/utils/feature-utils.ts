@@ -32,6 +32,7 @@ const FEATURES: Record<string, FeatureConfig> = {
     selectors: [
       'ytd-guide-entry-renderer:has(a[href="/feed/subscriptions"])',
       '#sections > ytd-guide-section-renderer:nth-child(2)',
+      '#items > ytd-mini-guide-entry-renderer:nth-child(3)',
       'ytd-browse[page-subtype="subscriptions"]',
     ],
   },
