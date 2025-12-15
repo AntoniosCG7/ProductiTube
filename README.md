@@ -55,6 +55,7 @@ Hide any element that distracts you:
 - Hide Buttons Bar
 - Hide Comments
 - Blur Thumbnails
+- Block Video Preview
 - Hide Top Header
 - Hide Notifications
 - Hide Recommended
