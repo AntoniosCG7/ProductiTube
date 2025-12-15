@@ -5,7 +5,6 @@ import {
   initializeSubscriptions,
   initializeExplore,
   initializeMoreFromYouTube,
-  initializeHideVideoPreview,
 } from './homepage';
 import { initializeAutoplay, initializeEndScreenCards, initializeEndScreenFeed } from './playback';
 import {
@@ -15,6 +14,7 @@ import {
   initializeButtonsBar,
   initializeComments,
   initializeBlurThumbnails,
+  initializeHideVideoPreview,
 } from './content';
 import { initializeTopHeader, initializeNotifications } from './header';
 import { initializeRecommendedVideos, initializeLiveChat, initializePlaylist } from './sidebar';

@@ -64,3 +64,14 @@ export const initializeBlurThumbnails = (enabled: boolean): (() => void) | void 
   if (!enabled) return;
   return enableFeature('blur-thumbnails');
 };
+
+/**
+ * Initialize video preview hiding features
+ * Blocks the video preview that plays when hovering over thumbnails
+ * @param enabled - Whether the feature should be enabled
+ * @returns Cleanup function to remove observers
+ */
+export const initializeHideVideoPreview = (enabled: boolean): (() => void) | void => {
+  if (!enabled) return;
+  return enableFeature('hide-video-preview');
+};
