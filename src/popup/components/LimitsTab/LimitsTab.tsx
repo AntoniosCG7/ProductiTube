@@ -2014,8 +2014,9 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             <DialogDescription className="text-sm text-center">
               Are you sure you want to delete the category{' '}
               <strong>&quot;{deleteConfirmation?.categoryName}&quot;</strong>?
-              <span className="block mt-2 text-red-600 font-medium">
-                This action cannot be undone. All progress for this category will be lost.
+              <span className="block mt-2 text-muted-foreground">
+                Your watch progress will be preserved. If you add a category with the same name
+                later, your usage will be restored.
               </span>
             </DialogDescription>
           </DialogHeader>

@@ -14,7 +14,7 @@ const USAGE_STORAGE_KEY = 'youtube_usage_data';
 
 interface UsageData {
   [date: string]: {
-    [categoryId: string]: {
+    [normalizedCategoryName: string]: {
       videoCount: number;
       timeWatched: number;
     };
@@ -26,6 +26,13 @@ interface UsageData {
  */
 const getTodayString = (): string => {
   return new Date().toDateString();
+};
+
+/**
+ * Normalize category name for consistent storage key lookup
+ */
+const normalizeCategoryName = (name: string): string => {
+  return name.toLowerCase().trim().replace(/\s+/g, ' ');
 };
 
 /**
@@ -64,11 +71,14 @@ export const useLimitsSettings = () => {
             if (mergedSettings.categories[mode as keyof typeof mergedSettings.categories]) {
               mergedSettings.categories[mode as keyof typeof mergedSettings.categories] =
                 mergedSettings.categories[mode as keyof typeof mergedSettings.categories].map(
-                  (category: any) => ({
-                    ...category,
-                    videosWatchedToday: usage[today]?.[category.id]?.videoCount || 0,
-                    timeWatchedToday: usage[today]?.[category.id]?.timeWatched || 0,
-                  })
+                  (category: any) => {
+                    const storageKey = normalizeCategoryName(category.name);
+                    return {
+                      ...category,
+                      videosWatchedToday: usage[today]?.[storageKey]?.videoCount || 0,
+                      timeWatchedToday: usage[today]?.[storageKey]?.timeWatched || 0,
+                    };
+                  }
                 );
             }
           });

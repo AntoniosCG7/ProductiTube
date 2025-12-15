@@ -62,9 +62,12 @@ const FEATURE_LABELS = {
 } as const;
 
 // ==================== INTERFACES ====================
+/**
+ * Usage data keyed by date and normalized category name
+ */
 interface UsageData {
   [date: string]: {
-    [categoryId: string]: {
+    [normalizedCategoryName: string]: {
       videoCount: number;
       timeWatched: number;
     };
@@ -129,6 +132,37 @@ const state: VideoLimitsState = {
 };
 
 // ==================== UTILITY FUNCTIONS ====================
+/**
+ * Normalize category name for consistent storage key lookup
+ */
+const normalizeCategoryName = (name: string): string => {
+  return name.toLowerCase().trim().replace(/\s+/g, ' ');
+};
+
+/**
+ * Get category name from category ID by looking up in settings
+ */
+const getCategoryNameById = (categoryId: string): string | null => {
+  if (!state.settings) return null;
+
+  const activeMode = state.settings.activeMode || 'time-category';
+  const categories =
+    activeMode === 'video-count' || activeMode === 'time-category'
+      ? state.settings.categories[activeMode] || []
+      : [];
+
+  const category = categories.find((cat: VideoCategory) => cat.id === categoryId);
+  return category ? category.name : null;
+};
+
+/**
+ * Get normalized storage key for a category by ID
+ */
+const getCategoryStorageKey = (categoryId: string): string | null => {
+  const name = getCategoryNameById(categoryId);
+  return name ? normalizeCategoryName(name) : null;
+};
+
 /**
  * Get current video URL for comparison
  */
@@ -326,16 +360,22 @@ const cleanupOldUsageData = async (): Promise<void> => {
  * Get videos watched today for a specific category
  */
 const getVideosWatchedToday = (categoryId: string): number => {
+  const storageKey = getCategoryStorageKey(categoryId);
+  if (!storageKey) return 0;
+
   const today = getTodayString();
-  return state.usageData[today]?.[categoryId]?.videoCount || 0;
+  return state.usageData[today]?.[storageKey]?.videoCount || 0;
 };
 
 /**
  * Get time watched today for a specific category (in minutes)
  */
 const getTimeWatchedToday = (categoryId: string): number => {
+  const storageKey = getCategoryStorageKey(categoryId);
+  if (!storageKey) return 0;
+
   const today = getTodayString();
-  return state.usageData[today]?.[categoryId]?.timeWatched || 0;
+  return state.usageData[today]?.[storageKey]?.timeWatched || 0;
 };
 
 /**
@@ -362,17 +402,23 @@ const refreshUsageData = async (): Promise<void> => {
  * Increment video count for a category
  */
 const incrementVideoCount = async (categoryId: string): Promise<void> => {
+  const storageKey = getCategoryStorageKey(categoryId);
+  if (!storageKey) {
+    console.error('[ProductiTube Limits] Cannot increment video count: category not found');
+    return;
+  }
+
   const today = getTodayString();
 
   if (!state.usageData[today]) {
     state.usageData[today] = {};
   }
 
-  if (!state.usageData[today][categoryId]) {
-    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+  if (!state.usageData[today][storageKey]) {
+    state.usageData[today][storageKey] = { videoCount: 0, timeWatched: 0 };
   }
 
-  state.usageData[today][categoryId].videoCount += 1;
+  state.usageData[today][storageKey].videoCount += 1;
   await saveUsageData();
 };
 
@@ -380,17 +426,23 @@ const incrementVideoCount = async (categoryId: string): Promise<void> => {
  * Add time watched for a category (in minutes)
  */
 const addTimeWatched = async (categoryId: string, minutes: number): Promise<void> => {
+  const storageKey = getCategoryStorageKey(categoryId);
+  if (!storageKey) {
+    console.error('[ProductiTube Limits] Cannot add time watched: category not found');
+    return;
+  }
+
   const today = getTodayString();
 
   if (!state.usageData[today]) {
     state.usageData[today] = {};
   }
 
-  if (!state.usageData[today][categoryId]) {
-    state.usageData[today][categoryId] = { videoCount: 0, timeWatched: 0 };
+  if (!state.usageData[today][storageKey]) {
+    state.usageData[today][storageKey] = { videoCount: 0, timeWatched: 0 };
   }
 
-  state.usageData[today][categoryId].timeWatched += Math.round(minutes * 100) / 100;
+  state.usageData[today][storageKey].timeWatched += Math.round(minutes * 100) / 100;
   await saveUsageData();
 };
 
