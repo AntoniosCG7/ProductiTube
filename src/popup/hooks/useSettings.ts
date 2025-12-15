@@ -11,6 +11,7 @@ const defaultSettings: Settings = {
   hideSubscriptions: false,
   hideExplore: false,
   hideMoreFromYoutube: false,
+  hideVideoPreview: false,
   disableAutoplay: false,
   hideEndScreenCards: false,
   hideEndScreenFeed: false,

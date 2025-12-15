@@ -46,6 +46,14 @@ const FEATURES: Record<string, FeatureConfig> = {
     cssClass: 'productitube-hide-more-youtube',
     selectors: ['#sections > ytd-guide-section-renderer:nth-child(5)'],
   },
+  'hide-video-preview': {
+    cssClass: 'productitube-hide-video-preview',
+    selectors: [
+      'ytd-video-preview',
+      'animated-thumbnail-overlay-view-model',
+      '.ytAnimatedThumbnailOverlayViewModelHost',
+    ],
+  },
   'hide-top-header': {
     cssClass: 'productitube-hide-top-header',
     selectors: ['ytd-masthead', '#masthead-container', '#container.ytd-masthead'],

@@ -5,6 +5,7 @@ import {
   initializeSubscriptions,
   initializeExplore,
   initializeMoreFromYouTube,
+  initializeHideVideoPreview,
 } from './homepage';
 import { initializeAutoplay, initializeEndScreenCards, initializeEndScreenFeed } from './playback';
 import {
@@ -46,6 +47,7 @@ const featureInitializers: Partial<Record<keyof Settings, FeatureInitializer>> =
   hideChannel: initializeChannel,
   hidePlaylist: initializePlaylist,
   hideMoreFromYoutube: initializeMoreFromYouTube,
+  hideVideoPreview: initializeHideVideoPreview,
   disableAutoplay: initializeAutoplay,
   blurThumbnails: initializeBlurThumbnails,
 } as const;

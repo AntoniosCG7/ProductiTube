@@ -4,6 +4,7 @@ export interface Settings {
   hideSubscriptions: boolean;
   hideExplore: boolean;
   hideMoreFromYoutube: boolean;
+  hideVideoPreview: boolean;
   disableAutoplay: boolean;
   hideEndScreenCards: boolean;
   hideEndScreenFeed: boolean;
