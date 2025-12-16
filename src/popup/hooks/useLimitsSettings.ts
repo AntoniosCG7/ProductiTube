@@ -152,16 +152,6 @@ export const useLimitsSettings = () => {
     }
   }, []);
 
-  const resetAllUsage = useCallback(async () => {
-    try {
-      await chrome.storage.local.remove(USAGE_STORAGE_KEY);
-      await fetchLimitsSettings();
-    } catch (error) {
-      console.error('Failed to reset usage data:', error);
-      setError(error instanceof Error ? error : new Error('Failed to reset usage data'));
-    }
-  }, [fetchLimitsSettings]);
-
   useEffect(() => {
     fetchLimitsSettings();
 
@@ -185,7 +175,6 @@ export const useLimitsSettings = () => {
   return {
     limitsSettings,
     updateLimitsSettings,
-    resetAllUsage,
     error,
     isLoading,
   };
