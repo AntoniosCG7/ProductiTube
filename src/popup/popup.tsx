@@ -16,7 +16,7 @@ import { AlertTriangle, Info } from 'lucide-react';
 import './styles/popup.css';
 
 const Popup: React.FC = () => {
-  const [activeTab, setActiveTab] = React.useState<TabId>('controls');
+  const [activeTab, setActiveTab] = React.useState<TabId>('limits');
   const [settings, updateSettings, error, isRateLimited, resetSettings] = useSettings();
   const { limitsSettings, updateLimitsSettings, error: limitsError } = useLimitsSettings();
 
