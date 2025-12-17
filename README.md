@@ -37,6 +37,10 @@ Take control of your YouTube time with powerful limit controls:
 - **Real-Time Tracking** — See exactly how much time you've spent and videos you've watched
 - **Smart Notifications** — Get alerts when approaching your limits
 
+#### 🛡️ Built-In Accountability
+
+ProductiTube is designed to keep you honest. Your viewing data persists across all limit modes—switching between "Video Count", "Time Limit", or "Total Time" modes won't reset your progress. Usage only resets at midnight, making it impossible to cheat the system. This strict approach ensures your limits actually work.
+
 ### 🚫 Customizable Controls
 
 Hide any element that distracts you:
