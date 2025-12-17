@@ -48,8 +48,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   );
 
   useEffect(() => {
+    if (limitsSettings.activeMode) {
+      setActiveMode(limitsSettings.activeMode);
+    }
+  }, [limitsSettings.activeMode]);
+
+  useEffect(() => {
     if (limitsSettings.totalDailyTimeLimit !== undefined) {
       setTotalTimeLimit(limitsSettings.totalDailyTimeLimit);
+      setIsTotalLimitSaved(true);
     }
   }, [limitsSettings.totalDailyTimeLimit]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

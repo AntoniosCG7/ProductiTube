@@ -140,18 +140,25 @@ const normalizeCategoryName = (name: string): string => {
 };
 
 /**
- * Get category name from category ID by looking up in settings
+ * Get category name by ID, searching all modes
  */
 const getCategoryNameById = (categoryId: string): string | null => {
   if (!state.settings) return null;
 
-  const activeMode = state.settings.activeMode || 'time-category';
-  const categories =
-    activeMode === 'video-count' || activeMode === 'time-category'
-      ? state.settings.categories[activeMode] || []
-      : [];
+  const videoCountCategories = state.settings.categories['video-count'] || [];
+  const timeCategoryCategories = state.settings.categories['time-category'] || [];
 
-  const category = categories.find((cat: VideoCategory) => cat.id === categoryId);
+  const activeMode = state.settings.activeMode || 'time-category';
+  const primaryCategories =
+    activeMode === 'video-count' ? videoCountCategories : timeCategoryCategories;
+  const secondaryCategories =
+    activeMode === 'video-count' ? timeCategoryCategories : videoCountCategories;
+
+  let category = primaryCategories.find((cat: VideoCategory) => cat.id === categoryId);
+  if (!category) {
+    category = secondaryCategories.find((cat: VideoCategory) => cat.id === categoryId);
+  }
+
   return category ? category.name : null;
 };
 
@@ -480,7 +487,59 @@ const resetTotalTimeUsage = async (): Promise<void> => {
 // ==================== CATEGORY-BASED TIME TRACKING ====================
 
 /**
- * Start time tracking for the current video
+ * Start passive time tracking (no limit enforcement, used in video-count mode)
+ */
+const startTimeTrackingOnly = (categoryId: string): void => {
+  if (state.timeTrackingInterval) {
+    clearInterval(state.timeTrackingInterval);
+  }
+
+  state.selectedCategoryId = categoryId;
+  state.videoStartTime = Date.now();
+  state.wasVideoPaused = false;
+  state.accumulatedTime = 0;
+
+  state.timeTrackingInterval = window.setInterval(async () => {
+    if (state.selectedCategoryId && state.videoStartTime) {
+      const video = document.querySelector('video') as HTMLVideoElement;
+      const isCurrentlyPaused = !video || video.paused;
+      const isCurrentlyShowingAd = isAdPlaying();
+      const shouldPauseTracking = isCurrentlyPaused || isCurrentlyShowingAd;
+
+      if (state.wasVideoPaused && !shouldPauseTracking) {
+        state.videoStartTime = Date.now();
+        state.wasVideoPaused = false;
+        return;
+      }
+
+      if (shouldPauseTracking) {
+        if (!state.wasVideoPaused) {
+          const elapsed =
+            (Date.now() - state.videoStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
+          if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
+            state.accumulatedTime += elapsed;
+            await addTimeWatched(state.selectedCategoryId, elapsed);
+          }
+        }
+        state.wasVideoPaused = true;
+        return;
+      }
+
+      state.wasVideoPaused = false;
+      const elapsed =
+        (Date.now() - state.videoStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
+
+      if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
+        state.accumulatedTime += elapsed;
+        await addTimeWatched(state.selectedCategoryId, elapsed);
+        state.videoStartTime = Date.now();
+      }
+    }
+  }, TIME_TRACKING_INTERVAL_MS);
+};
+
+/**
+ * Start time tracking for the current video (with limit enforcement)
  */
 const startTimeTracking = (categoryId: string): void => {
   if (state.timeTrackingInterval) {
@@ -627,8 +686,61 @@ const stopTimeTracking = async (): Promise<void> => {
 };
 
 // ==================== TOTAL TIME TRACKING ====================
+
 /**
- * Start total time tracking (for time-total mode)
+ * Start passive total time tracking (no limit enforcement, used in category modes)
+ */
+const startTotalTimeTrackingOnly = (): void => {
+  if (state.totalTimeTrackingInterval) {
+    clearInterval(state.totalTimeTrackingInterval);
+  }
+
+  state.totalTimeStartTime = Date.now();
+  state.totalTimeWasVideoPaused = false;
+  state.totalTimeAccumulated = 0;
+
+  state.totalTimeTrackingInterval = window.setInterval(async () => {
+    if (state.totalTimeStartTime) {
+      const video = document.querySelector('video') as HTMLVideoElement;
+      const isCurrentlyPaused = !video || video.paused;
+      const isCurrentlyShowingAd = isAdPlaying();
+      const shouldPauseTracking = isCurrentlyPaused || isCurrentlyShowingAd;
+
+      if (state.totalTimeWasVideoPaused && !shouldPauseTracking) {
+        state.totalTimeStartTime = Date.now();
+        state.totalTimeWasVideoPaused = false;
+        return;
+      }
+
+      if (shouldPauseTracking) {
+        if (!state.totalTimeWasVideoPaused) {
+          const elapsed =
+            (Date.now() - state.totalTimeStartTime) /
+            (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
+          if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
+            state.totalTimeAccumulated += elapsed;
+            await addTotalTimeWatched(elapsed);
+          }
+        }
+        state.totalTimeWasVideoPaused = true;
+        return;
+      }
+
+      state.totalTimeWasVideoPaused = false;
+      const elapsed =
+        (Date.now() - state.totalTimeStartTime) / (MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE);
+
+      if (elapsed >= MIN_TRACKING_TIME_MINUTES) {
+        state.totalTimeAccumulated += elapsed;
+        await addTotalTimeWatched(elapsed);
+        state.totalTimeStartTime = Date.now();
+      }
+    }
+  }, TIME_TRACKING_INTERVAL_MS);
+};
+
+/**
+ * Start total time tracking with limit enforcement (for time-total mode)
  */
 const startTotalTimeTracking = (): void => {
   if (state.totalTimeTrackingInterval) {
@@ -1718,8 +1830,11 @@ const handleCategorySelection = async (categoryId: string): Promise<void> => {
   try {
     const isTimeMode = activeMode === 'time-category';
 
+    // Track all metrics: video count, category time, and total time (only active mode enforces limits)
     if (isTimeMode) {
+      await incrementVideoCount(categoryId);
       startTimeTracking(categoryId);
+      startTotalTimeTrackingOnly();
 
       const timeWatched = getTimeWatchedToday(categoryId);
       const timeLimit = category.dailyTimeLimit || 60;
@@ -1733,6 +1848,8 @@ const handleCategorySelection = async (categoryId: string): Promise<void> => {
       }
     } else {
       await incrementVideoCount(categoryId);
+      startTimeTrackingOnly(categoryId);
+      startTotalTimeTrackingOnly();
 
       const newCount = getVideosWatchedToday(categoryId);
       const hasReachedLimit = newCount >= category.dailyLimitCount;
@@ -1741,7 +1858,7 @@ const handleCategorySelection = async (categoryId: string): Promise<void> => {
         showLimitReachedMessage(category);
       } else {
         resumeVideo();
-        removeModal();
+        removeModalOnly();
       }
     }
   } catch (error) {
@@ -2491,27 +2608,7 @@ export const initializeVideoLimits = (): (() => void) => {
 
     messageListener = async (message, sender, sendResponse) => {
       if (message.type === 'LIMITS_UPDATED') {
-        const previousMode = state.settings?.activeMode;
-        const wasLimitsEnabled = state.settings?.isLimitsEnabled;
-
         await loadData();
-
-        const currentMode = state.settings?.activeMode;
-        const isLimitsEnabled = state.settings?.isLimitsEnabled;
-
-        const modeChanged = previousMode !== currentMode;
-        const enabledStateChanged = wasLimitsEnabled !== isLimitsEnabled;
-
-        if (modeChanged || enabledStateChanged) {
-          if (previousMode === 'time-total' && (currentMode !== 'time-total' || !isLimitsEnabled)) {
-            await resetTotalTimeUsage();
-          }
-
-          if (currentMode === 'time-total' && previousMode !== 'time-total' && isLimitsEnabled) {
-            await resetTotalTimeUsage();
-          }
-        }
-
         sendResponse({ success: true });
       } else if (message.type === 'RESET_TOTAL_TIME_USAGE') {
         await resetTotalTimeUsage();
