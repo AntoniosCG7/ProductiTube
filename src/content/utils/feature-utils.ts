@@ -16,7 +16,7 @@ interface FeatureConfig {
 const FEATURES: Record<string, FeatureConfig> = {
   'hide-home-feed': {
     cssClass: 'productitube-hide-home-feed',
-    selectors: ['#chips-wrapper', 'ytd-browse[page-subtype="home"] #contents'],
+    selectors: ['#chips-wrapper', 'ytd-browse[page-subtype="home"] #contents', '#masthead-ad', ],
   },
   'hide-shorts': {
     cssClass: 'productitube-hide-shorts',
