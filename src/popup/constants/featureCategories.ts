@@ -25,8 +25,8 @@ export const featureCategories: FeatureCategory[] = [
     title: 'Content Visibility',
     description: 'Control the visibility of video details and interactions.',
     features: [
-      { key: 'hideChannel', label: 'Hide Channel' },
       { key: 'hideVideoInfo', label: 'Hide Video Info' },
+      { key: 'hideChannel', label: 'Hide Channel' },
       { key: 'hideDescription', label: 'Hide Description' },
       { key: 'hideButtonsBar', label: 'Hide Buttons Bar' },
       { key: 'hideComments', label: 'Hide Comments' },
