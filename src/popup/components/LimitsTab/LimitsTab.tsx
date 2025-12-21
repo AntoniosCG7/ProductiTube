@@ -28,6 +28,7 @@ import {
   Save,
   Star,
   Zap,
+  Lock,
 } from 'lucide-react';
 import type { LimitsTabProps, VideoCategory, FavoriteCategory } from '@/types';
 
@@ -112,6 +113,9 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     newLimit: number;
     currentLimit: number;
     isOpen: boolean;
+  } | null>(null);
+  const [restoredCategoriesInfo, setRestoredCategoriesInfo] = useState<{
+    categories: Array<{ name: string; originalLimit: number | string; newLimit: number | string }>;
   } | null>(null);
 
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
@@ -214,6 +218,21 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     const currentModeCategories = getCurrentModeCategories();
     const updatedCategories = currentModeCategories.map((cat: VideoCategory) => {
       if (cat.name.toLowerCase() === editingFavorite.name.toLowerCase()) {
+        if (isCategoryLocked(cat)) {
+          if (activeMode === 'video-count') {
+            const newLimit = newCategory.dailyLimitCount || 5;
+            const currentLimit = cat.dailyLimitCount || 5;
+            if (newLimit > currentLimit) {
+              return cat;
+            }
+          } else if (activeMode === 'time-category') {
+            const newLimit = newCategory.dailyTimeLimit || 60;
+            const currentLimit = cat.dailyTimeLimit || 60;
+            if (newLimit > currentLimit) {
+              return cat;
+            }
+          }
+        }
         return {
           ...cat,
           name: newCategory.name.trim(),
@@ -304,22 +323,135 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     }
   };
 
-  const confirmLoadFavorites = () => {
+  const confirmLoadFavorites = async () => {
     if (!loadFavoritesConfirmation) return;
 
     const currentModeCategories = getCurrentModeCategories();
     const { favoritesToAdd } = loadFavoritesConfirmation;
 
-    const newCategories: VideoCategory[] = favoritesToAdd.map((fav: FavoriteCategory) => ({
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name: fav.name,
-      color: fav.color,
-      dailyLimitCount: fav.dailyLimitCount,
-      dailyTimeLimit: fav.dailyTimeLimit || 60,
-      videosWatchedToday: 0,
-      timeWatchedToday: 0,
-      isActive: true,
-    }));
+    const newCategories: VideoCategory[] = [];
+    const restoredCategories: Array<{
+      name: string;
+      originalLimit: number | string;
+      newLimit: number | string;
+    }> = [];
+
+    for (const fav of favoritesToAdd) {
+      const usageData = await checkUsageDataForCategory(fav.name);
+      let finalLimitCount = fav.dailyLimitCount;
+      let finalTimeLimit = fav.dailyTimeLimit || 60;
+
+      if (usageData && (usageData.videoCount > 0 || usageData.timeWatched > 0)) {
+        if (activeMode === 'video-count') {
+          let originalLimit: number | undefined;
+
+          if (
+            usageData.lockedLimit !== undefined &&
+            usageData.lockedLimit !== null &&
+            typeof usageData.lockedLimit === 'number' &&
+            usageData.lockedLimit > 0
+          ) {
+            originalLimit = usageData.lockedLimit;
+          } else {
+            const allCategories = [
+              ...(limitsSettings.categories['video-count'] || []),
+              ...(limitsSettings.categories['time-category'] || []),
+            ];
+            const allFavorites = limitsSettings.favoriteCategories || [];
+
+            const matchingCategory = allCategories.find(
+              (cat) => cat.name.toLowerCase() === fav.name.toLowerCase()
+            );
+
+            const matchingFavorites = allFavorites.filter(
+              (favItem) => favItem.name.toLowerCase() === fav.name.toLowerCase()
+            );
+
+            originalLimit = matchingCategory?.dailyLimitCount;
+
+            for (const matchingFavorite of matchingFavorites) {
+              if (matchingFavorite.id === fav.id) continue;
+              if (!originalLimit || matchingFavorite.dailyLimitCount < originalLimit) {
+                originalLimit = matchingFavorite.dailyLimitCount;
+              }
+            }
+          }
+
+          if (originalLimit !== undefined && fav.dailyLimitCount > originalLimit) {
+            finalLimitCount = originalLimit;
+            restoredCategories.push({
+              name: fav.name,
+              originalLimit: originalLimit,
+              newLimit: fav.dailyLimitCount,
+            });
+          } else if (originalLimit === undefined) {
+            const allCategories = [
+              ...(limitsSettings.categories['video-count'] || []),
+              ...(limitsSettings.categories['time-category'] || []),
+            ];
+            const matchingCategory = allCategories.find(
+              (cat) => cat.name.toLowerCase() === fav.name.toLowerCase()
+            );
+            if (matchingCategory && fav.dailyLimitCount > matchingCategory.dailyLimitCount) {
+              finalLimitCount = matchingCategory.dailyLimitCount;
+              restoredCategories.push({
+                name: fav.name,
+                originalLimit: matchingCategory.dailyLimitCount,
+                newLimit: fav.dailyLimitCount,
+              });
+            }
+          }
+        } else if (activeMode === 'time-category') {
+          let originalLimit: number | undefined;
+
+          if (usageData.lockedTimeLimit !== undefined) {
+            originalLimit = usageData.lockedTimeLimit;
+          } else {
+            const allCategories = [
+              ...(limitsSettings.categories['video-count'] || []),
+              ...(limitsSettings.categories['time-category'] || []),
+            ];
+            const allFavorites = limitsSettings.favoriteCategories || [];
+            const matchingCategory = allCategories.find(
+              (cat) => cat.name.toLowerCase() === fav.name.toLowerCase()
+            );
+            const matchingFavorite = allFavorites.find(
+              (favItem) =>
+                favItem.name.toLowerCase() === fav.name.toLowerCase() && favItem.id !== fav.id
+            );
+            originalLimit = matchingCategory?.dailyTimeLimit || (matchingCategory ? 60 : undefined);
+            const favoriteLimitToCompare =
+              matchingFavorite?.dailyTimeLimit || (matchingFavorite ? 60 : undefined);
+            if (
+              favoriteLimitToCompare !== undefined &&
+              (!originalLimit || favoriteLimitToCompare < originalLimit)
+            ) {
+              originalLimit = favoriteLimitToCompare;
+            }
+          }
+
+          if (originalLimit !== undefined && finalTimeLimit > originalLimit) {
+            finalTimeLimit = originalLimit;
+            restoredCategories.push({
+              name: fav.name,
+              originalLimit: formatTime(originalLimit),
+              newLimit: formatTime(fav.dailyTimeLimit || 60),
+            });
+          }
+        }
+      }
+
+      newCategories.push({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        name: fav.name,
+        color: fav.color,
+        dailyLimitCount: finalLimitCount,
+        dailyTimeLimit: finalTimeLimit,
+        videosWatchedToday: usageData?.videoCount || 0,
+        timeWatchedToday: usageData?.timeWatched || 0,
+        isActive: true,
+      });
+    }
 
     updateLimitsSettings({
       categories: {
@@ -327,6 +459,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         [activeMode]: [...currentModeCategories, ...newCategories],
       },
     });
+
+    if (restoredCategories.length > 0) {
+      setRestoredCategoriesInfo({ categories: restoredCategories });
+    }
 
     setLoadFavoritesConfirmation(null);
   };
@@ -432,6 +568,71 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     }
   };
 
+  const isCategoryLocked = (category: VideoCategory): boolean => {
+    const hasVideoUsage = (category.videosWatchedToday || 0) > 0;
+    const hasTimeUsage = (category.timeWatchedToday || 0) > 0;
+    return hasVideoUsage || hasTimeUsage;
+  };
+
+  const isLimitIncrease = (category: VideoCategory, newLimit: number, mode: LimitMode): boolean => {
+    if (mode === 'video-count') {
+      return newLimit > (category.dailyLimitCount || 5);
+    } else if (mode === 'time-category') {
+      return newLimit > (category.dailyTimeLimit || 60);
+    }
+    return false;
+  };
+
+  const getTimeUntilMidnight = (): string => {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+
+    const totalMs = midnight.getTime() - now.getTime();
+    const hours = Math.floor(totalMs / (1000 * 60 * 60));
+    const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  const checkUsageDataForCategory = async (
+    categoryName: string
+  ): Promise<{
+    videoCount: number;
+    timeWatched: number;
+    lockedLimit?: number; // For video-count mode
+    lockedTimeLimit?: number; // For time-category mode
+  } | null> => {
+    try {
+      const USAGE_STORAGE_KEY = 'youtube_usage_data';
+      const today = new Date().toDateString();
+      const normalizeCategoryName = (name: string): string => {
+        return name.toLowerCase().trim().replace(/\s+/g, ' ');
+      };
+
+      const usageDataResult = await chrome.storage.local.get(USAGE_STORAGE_KEY);
+      const usageData = usageDataResult[USAGE_STORAGE_KEY] || {};
+      const storageKey = normalizeCategoryName(categoryName);
+
+      const todayUsage = usageData[today]?.[storageKey];
+      if (todayUsage) {
+        return {
+          videoCount: todayUsage.videoCount || 0,
+          timeWatched: todayUsage.timeWatched || 0,
+          lockedLimit: todayUsage.lockedLimit,
+          lockedTimeLimit: todayUsage.lockedTimeLimit,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to check usage data:', error);
+      return null;
+    }
+  };
+
   const validateForm = () => {
     const errors: { name?: string; dailyLimitCount?: string; dailyTimeLimit?: string } = {};
 
@@ -443,19 +644,41 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       errors.name = 'Category name must be less than 30 characters';
     }
 
-    if (activeMode === 'video-count') {
-      if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
-        errors.dailyLimitCount = 'Daily limit must be at least 1 video';
-      } else if (newCategory.dailyLimitCount > 100) {
-        errors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
+    if (editingCategory && isCategoryLocked(editingCategory)) {
+      if (activeMode === 'video-count') {
+        if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
+          errors.dailyLimitCount = 'Daily limit must be at least 1 video';
+        } else if (newCategory.dailyLimitCount > 100) {
+          errors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
+        } else if (isLimitIncrease(editingCategory, newCategory.dailyLimitCount, activeMode)) {
+          errors.dailyLimitCount = `Can't increase — category was used today. Resets at midnight.`;
+        }
       }
-    }
 
-    if (activeMode === 'time-category') {
-      if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
-        errors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
-      } else if (newCategory.dailyTimeLimit > 480) {
-        errors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
+      if (activeMode === 'time-category') {
+        if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
+          errors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
+        } else if (newCategory.dailyTimeLimit > 480) {
+          errors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
+        } else if (isLimitIncrease(editingCategory, newCategory.dailyTimeLimit, activeMode)) {
+          errors.dailyTimeLimit = `Can't increase — category was used today. Resets at midnight.`;
+        }
+      }
+    } else {
+      if (activeMode === 'video-count') {
+        if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
+          errors.dailyLimitCount = 'Daily limit must be at least 1 video';
+        } else if (newCategory.dailyLimitCount > 100) {
+          errors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
+        }
+      }
+
+      if (activeMode === 'time-category') {
+        if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
+          errors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
+        } else if (newCategory.dailyTimeLimit > 480) {
+          errors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
+        }
       }
     }
 
@@ -520,10 +743,36 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteConfirmation) return;
 
     const currentModeCategories = getCurrentModeCategories();
+
+    const categoryToDelete = currentModeCategories.find(
+      (cat: VideoCategory) => cat.id === deleteConfirmation.categoryId
+    );
+
+    if (categoryToDelete && isCategoryLocked(categoryToDelete)) {
+      try {
+        const USAGE_STORAGE_KEY = 'youtube_usage_data';
+        const today = new Date().toDateString();
+        const normalizeName = (name: string): string =>
+          name.toLowerCase().trim().replace(/\s+/g, ' ');
+        const storageKey = normalizeName(categoryToDelete.name);
+
+        const usageDataResult = await chrome.storage.local.get(USAGE_STORAGE_KEY);
+        const usageData = usageDataResult[USAGE_STORAGE_KEY] || {};
+
+        if (usageData[today]?.[storageKey]) {
+          usageData[today][storageKey].lockedLimit = categoryToDelete.dailyLimitCount;
+          usageData[today][storageKey].lockedTimeLimit = categoryToDelete.dailyTimeLimit || 60;
+          await chrome.storage.local.set({ [USAGE_STORAGE_KEY]: usageData });
+        }
+      } catch (error) {
+        console.error('Failed to store locked limits:', error);
+      }
+    }
+
     const updatedCategories = currentModeCategories.filter(
       (cat: VideoCategory) => cat.id !== deleteConfirmation.categoryId
     );
@@ -561,7 +810,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     setCategoryToggleConfirmation(null);
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (newCategory.name.trim() && !validateForm()) {
       return;
     }
@@ -597,37 +846,199 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     }
 
     const categoriesToAdd: VideoCategory[] = [];
+    const restoredCategories: Array<{
+      name: string;
+      originalLimit: number | string;
+      newLimit: number | string;
+    }> = [];
 
     if (newCategory.name.trim()) {
+      const usageData = await checkUsageDataForCategory(newCategory.name.trim());
+      let finalLimitCount = newCategory.dailyLimitCount;
+      let finalTimeLimit = newCategory.dailyTimeLimit;
+
+      if (usageData && (usageData.videoCount > 0 || usageData.timeWatched > 0)) {
+        if (activeMode === 'video-count') {
+          let originalLimit: number | undefined;
+
+          if (usageData.lockedLimit !== undefined) {
+            originalLimit = usageData.lockedLimit;
+          } else {
+            const allCategories = [
+              ...(limitsSettings.categories['video-count'] || []),
+              ...(limitsSettings.categories['time-category'] || []),
+            ];
+            const allFavorites = limitsSettings.favoriteCategories || [];
+            const matchingCategory = allCategories.find(
+              (cat) => cat.name.toLowerCase() === newCategory.name.trim().toLowerCase()
+            );
+            const matchingFavorite = allFavorites.find(
+              (fav) => fav.name.toLowerCase() === newCategory.name.trim().toLowerCase()
+            );
+            originalLimit = matchingCategory?.dailyLimitCount;
+            if (
+              matchingFavorite &&
+              (!originalLimit || matchingFavorite.dailyLimitCount < originalLimit)
+            ) {
+              originalLimit = matchingFavorite.dailyLimitCount;
+            }
+          }
+
+          if (originalLimit !== undefined && newCategory.dailyLimitCount > originalLimit) {
+            finalLimitCount = originalLimit;
+            restoredCategories.push({
+              name: newCategory.name.trim(),
+              originalLimit: originalLimit,
+              newLimit: newCategory.dailyLimitCount,
+            });
+          }
+        } else if (activeMode === 'time-category') {
+          let originalLimit: number | undefined;
+
+          if (usageData.lockedTimeLimit !== undefined) {
+            originalLimit = usageData.lockedTimeLimit;
+          } else {
+            const allCategories = [
+              ...(limitsSettings.categories['video-count'] || []),
+              ...(limitsSettings.categories['time-category'] || []),
+            ];
+            const allFavorites = limitsSettings.favoriteCategories || [];
+            const matchingCategory = allCategories.find(
+              (cat) => cat.name.toLowerCase() === newCategory.name.trim().toLowerCase()
+            );
+            const matchingFavorite = allFavorites.find(
+              (fav) => fav.name.toLowerCase() === newCategory.name.trim().toLowerCase()
+            );
+            originalLimit = matchingCategory?.dailyTimeLimit || (matchingCategory ? 60 : undefined);
+            const favoriteLimitToCompare =
+              matchingFavorite?.dailyTimeLimit || (matchingFavorite ? 60 : undefined);
+            if (
+              favoriteLimitToCompare !== undefined &&
+              (!originalLimit || favoriteLimitToCompare < originalLimit)
+            ) {
+              originalLimit = favoriteLimitToCompare;
+            }
+          }
+
+          if (originalLimit !== undefined && newCategory.dailyTimeLimit > originalLimit) {
+            finalTimeLimit = originalLimit;
+            restoredCategories.push({
+              name: newCategory.name.trim(),
+              originalLimit: formatTime(originalLimit),
+              newLimit: formatTime(newCategory.dailyTimeLimit),
+            });
+          }
+        }
+      }
+
       const category: VideoCategory = {
         id: Date.now().toString(),
         name: newCategory.name.trim(),
         color: newCategory.color,
-        dailyLimitCount: newCategory.dailyLimitCount,
-        dailyTimeLimit: newCategory.dailyTimeLimit,
-        videosWatchedToday: 0,
-        timeWatchedToday: 0,
+        dailyLimitCount: finalLimitCount,
+        dailyTimeLimit: finalTimeLimit,
+        videosWatchedToday: usageData?.videoCount || 0,
+        timeWatchedToday: usageData?.timeWatched || 0,
         isActive: true,
       };
       categoriesToAdd.push(category);
     }
 
-    selectedPresets.forEach((presetName) => {
+    for (const presetName of selectedPresets) {
       const preset = PRESET_CATEGORIES.find((p) => p.name === presetName);
       if (preset) {
+        const usageData = await checkUsageDataForCategory(presetName);
+        let finalLimitCount = newCategory.dailyLimitCount;
+        let finalTimeLimit = newCategory.dailyTimeLimit;
+
+        if (usageData && (usageData.videoCount > 0 || usageData.timeWatched > 0)) {
+          if (activeMode === 'video-count') {
+            let originalLimit: number | undefined;
+
+            if (usageData.lockedLimit !== undefined) {
+              originalLimit = usageData.lockedLimit;
+            } else {
+              const allCategories = [
+                ...(limitsSettings.categories['video-count'] || []),
+                ...(limitsSettings.categories['time-category'] || []),
+              ];
+              const allFavorites = limitsSettings.favoriteCategories || [];
+              const matchingCategory = allCategories.find(
+                (cat) => cat.name.toLowerCase() === presetName.toLowerCase()
+              );
+              const matchingFavorite = allFavorites.find(
+                (fav) => fav.name.toLowerCase() === presetName.toLowerCase()
+              );
+              originalLimit = matchingCategory?.dailyLimitCount;
+              if (
+                matchingFavorite &&
+                (!originalLimit || matchingFavorite.dailyLimitCount < originalLimit)
+              ) {
+                originalLimit = matchingFavorite.dailyLimitCount;
+              }
+            }
+
+            if (originalLimit !== undefined && newCategory.dailyLimitCount > originalLimit) {
+              finalLimitCount = originalLimit;
+              restoredCategories.push({
+                name: presetName,
+                originalLimit: originalLimit,
+                newLimit: newCategory.dailyLimitCount,
+              });
+            }
+          } else if (activeMode === 'time-category') {
+            let originalLimit: number | undefined;
+
+            if (usageData.lockedTimeLimit !== undefined) {
+              originalLimit = usageData.lockedTimeLimit;
+            } else {
+              const allCategories = [
+                ...(limitsSettings.categories['video-count'] || []),
+                ...(limitsSettings.categories['time-category'] || []),
+              ];
+              const allFavorites = limitsSettings.favoriteCategories || [];
+              const matchingCategory = allCategories.find(
+                (cat) => cat.name.toLowerCase() === presetName.toLowerCase()
+              );
+              const matchingFavorite = allFavorites.find(
+                (fav) => fav.name.toLowerCase() === presetName.toLowerCase()
+              );
+              originalLimit =
+                matchingCategory?.dailyTimeLimit || (matchingCategory ? 60 : undefined);
+              const favoriteLimitToCompare =
+                matchingFavorite?.dailyTimeLimit || (matchingFavorite ? 60 : undefined);
+              if (
+                favoriteLimitToCompare !== undefined &&
+                (!originalLimit || favoriteLimitToCompare < originalLimit)
+              ) {
+                originalLimit = favoriteLimitToCompare;
+              }
+            }
+
+            if (originalLimit !== undefined && newCategory.dailyTimeLimit > originalLimit) {
+              finalTimeLimit = originalLimit;
+              restoredCategories.push({
+                name: presetName,
+                originalLimit: formatTime(originalLimit),
+                newLimit: formatTime(newCategory.dailyTimeLimit),
+              });
+            }
+          }
+        }
+
         const category: VideoCategory = {
           id: (Date.now() + Math.random()).toString(),
           name: preset.name,
           color: preset.color,
-          dailyLimitCount: newCategory.dailyLimitCount,
-          dailyTimeLimit: newCategory.dailyTimeLimit,
-          videosWatchedToday: 0,
-          timeWatchedToday: 0,
+          dailyLimitCount: finalLimitCount,
+          dailyTimeLimit: finalTimeLimit,
+          videosWatchedToday: usageData?.videoCount || 0,
+          timeWatchedToday: usageData?.timeWatched || 0,
           isActive: true,
         };
         categoriesToAdd.push(category);
       }
-    });
+    }
 
     const currentModeCategories = getCurrentModeCategories();
 
@@ -637,6 +1048,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         [activeMode]: [...currentModeCategories, ...categoriesToAdd],
       },
     });
+
+    if (restoredCategories.length > 0) {
+      setRestoredCategoriesInfo({ categories: restoredCategories });
+    }
 
     setNewCategory({
       name: '',
@@ -1843,6 +2258,45 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Warning Banner - Show when category is not locked yet */}
+            {editingCategory && !isCategoryLocked(editingCategory) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-amber-800 mb-1">Limits lock after first use</p>
+                    <p className="text-amber-700">
+                      Once you start watching in this category today, you won&apos;t be able to
+                      increase these limits until midnight. You can always decrease them or edit
+                      other settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Locked Indicator - Show when category is locked */}
+            {editingCategory && isCategoryLocked(editingCategory) && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <Lock className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-red-800 mb-1">Limit Increase Not Allowed</p>
+                    <p className="text-red-700 mb-2">
+                      This category was used today (
+                      {activeMode === 'video-count'
+                        ? `${editingCategory.videosWatchedToday || 0} video${(editingCategory.videosWatchedToday || 0) !== 1 ? 's' : ''}`
+                        : formatTime(editingCategory.timeWatchedToday || 0)}
+                      ), so its limit can&apos;t be increased.
+                    </p>
+                    <p className="text-red-600">
+                      You can still lower the limit or edit other settings. Resets at midnight (
+                      {getTimeUntilMidnight()}).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="edit-category-name" className="mb-1 text-xs">
                 Category Name
@@ -1870,27 +2324,35 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 <Label htmlFor="edit-daily-limit" className="mb-1 text-xs">
                   Daily Video Limit
                 </Label>
-                <Input
-                  id="edit-daily-limit"
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={newCategory.dailyLimitCount}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    setNewCategory({
-                      ...newCategory,
-                      dailyLimitCount: Number.parseInt(e.target.value) || 5,
-                    });
-                    if (validationErrors.dailyLimitCount) {
-                      setValidationErrors({ ...validationErrors, dailyLimitCount: undefined });
-                    }
-                  }}
-                  className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                    validationErrors.dailyLimitCount ? 'border-red-500 ring-1 ring-red-500' : ''
-                  }`}
-                />
+                <div className="relative">
+                  <Input
+                    id="edit-daily-limit"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={newCategory.dailyLimitCount}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const newValue = Number.parseInt(e.target.value) || 5;
+                      setNewCategory({
+                        ...newCategory,
+                        dailyLimitCount: newValue,
+                      });
+                      if (validationErrors.dailyLimitCount) {
+                        setValidationErrors({ ...validationErrors, dailyLimitCount: undefined });
+                      }
+                    }}
+                    className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                      validationErrors.dailyLimitCount ? 'border-red-500 ring-1 ring-red-500' : ''
+                    }`}
+                  />
+                </div>
                 {validationErrors.dailyLimitCount ? (
                   <p className="text-xs text-red-500 mt-1">{validationErrors.dailyLimitCount}</p>
+                ) : editingCategory && isCategoryLocked(editingCategory) ? (
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Current: {editingCategory.dailyLimitCount} videos (locked) — Used{' '}
+                    {editingCategory.videosWatchedToday || 0} today
+                  </p>
                 ) : (
                   <p className="text-[10px] text-gray-500 mt-1">Maximum number of videos per day</p>
                 )}
@@ -1902,27 +2364,35 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 <Label htmlFor="edit-daily-time-limit" className="mb-1 text-xs">
                   Daily Time Limit (minutes)
                 </Label>
-                <Input
-                  id="edit-daily-time-limit"
-                  type="number"
-                  min="5"
-                  max="480"
-                  value={newCategory.dailyTimeLimit}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    setNewCategory({
-                      ...newCategory,
-                      dailyTimeLimit: Number.parseInt(e.target.value) || 60,
-                    });
-                    if (validationErrors.dailyTimeLimit) {
-                      setValidationErrors({ ...validationErrors, dailyTimeLimit: undefined });
-                    }
-                  }}
-                  className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                    validationErrors.dailyTimeLimit ? 'border-red-500 ring-1 ring-red-500' : ''
-                  }`}
-                />
+                <div className="relative">
+                  <Input
+                    id="edit-daily-time-limit"
+                    type="number"
+                    min="5"
+                    max="480"
+                    value={newCategory.dailyTimeLimit}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const newValue = Number.parseInt(e.target.value) || 60;
+                      setNewCategory({
+                        ...newCategory,
+                        dailyTimeLimit: newValue,
+                      });
+                      if (validationErrors.dailyTimeLimit) {
+                        setValidationErrors({ ...validationErrors, dailyTimeLimit: undefined });
+                      }
+                    }}
+                    className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
+                      validationErrors.dailyTimeLimit ? 'border-red-500 ring-1 ring-red-500' : ''
+                    }`}
+                  />
+                </div>
                 {validationErrors.dailyTimeLimit ? (
                   <p className="text-xs text-red-500 mt-1">{validationErrors.dailyTimeLimit}</p>
+                ) : editingCategory && isCategoryLocked(editingCategory) ? (
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Current: {formatTime(editingCategory.dailyTimeLimit || 60)} (locked) — Used{' '}
+                    {formatTime(editingCategory.timeWatchedToday || 0)} today
+                  </p>
                 ) : (
                   <p className="text-[10px] text-gray-500 mt-1">
                     Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)})
@@ -2332,6 +2802,55 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             </Button>
             <Button variant="outline" onClick={cancelDeleteFavorite} className="h-9 text-sm">
               Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Restoration Notification Dialog */}
+      <Dialog
+        open={!!restoredCategoriesInfo}
+        onOpenChange={(open) => !open && setRestoredCategoriesInfo(null)}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <Lock className="w-5 h-5 text-blue-500" />
+              Limits Locked
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-3 text-left">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs text-blue-700 mb-2">
+                      Some categories were already used today, so their limits couldn&apos;t be
+                      increased:
+                    </p>
+                    <div className="space-y-1">
+                      {restoredCategoriesInfo?.categories.map((rc, index) => (
+                        <p key={index} className="text-xs text-blue-800 font-medium">
+                          {rc.name} — {rc.originalLimit}{' '}
+                          <span className="font-normal text-blue-600">
+                            (instead of {rc.newLimit})
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                    <p className="text-xs text-blue-600 mt-3">
+                      Limits reset at midnight. You can still lower limits or edit other settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={() => setRestoredCategoriesInfo(null)}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 h-9 text-sm"
+            >
+              Got it
             </Button>
           </div>
         </DialogContent>
