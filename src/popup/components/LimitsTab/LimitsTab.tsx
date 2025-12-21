@@ -1082,11 +1082,13 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     }
 
     const currentModeCategories = getCurrentModeCategories();
+    const isLocked = isCategoryLocked(editingCategory);
+
     const updatedCategories = currentModeCategories.map((cat: VideoCategory) =>
       cat.id === editingCategory.id
         ? {
             ...cat,
-            name: newCategory.name.trim(),
+            name: isLocked ? cat.name : newCategory.name.trim(),
             color: newCategory.color,
             dailyLimitCount: newCategory.dailyLimitCount,
             dailyTimeLimit: newCategory.dailyTimeLimit,
@@ -2305,17 +2307,31 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 id="edit-category-name"
                 value={newCategory.name}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  if (editingCategory && isCategoryLocked(editingCategory)) {
+                    return;
+                  }
                   setNewCategory({ ...newCategory, name: e.target.value });
                   if (validationErrors.name) {
                     setValidationErrors({ ...validationErrors, name: undefined });
                   }
                 }}
+                readOnly={editingCategory ? isCategoryLocked(editingCategory) : false}
                 className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
                   validationErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''
+                } ${
+                  editingCategory && isCategoryLocked(editingCategory)
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : ''
                 }`}
               />
               {validationErrors.name && (
                 <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
+              )}
+              {editingCategory && isCategoryLocked(editingCategory) && (
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Names of active categories cannot be changed. This prevents bypassing limits and
+                  keeps usage data accurate.
+                </p>
               )}
             </div>
 
@@ -2406,6 +2422,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               value={newCategory.color}
               onChange={(color: string) => setNewCategory({ ...newCategory, color })}
             />
+
             <div className="flex gap-2">
               <Button
                 onClick={handleUpdateCategory}
