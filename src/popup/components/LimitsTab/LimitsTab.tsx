@@ -2158,10 +2158,14 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               )}
 
               <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
-                <div className={`bg-gradient-to-r ${isTotalTimeLimitLocked() ? 'from-amber-50 to-orange-50 border-b border-amber-100/50' : 'from-purple-50 to-indigo-50 border-b border-purple-100/50'} px-6 py-6`}>
+                <div
+                  className={`bg-gradient-to-r ${isTotalTimeLimitLocked() ? 'from-amber-50 to-orange-50 border-b border-amber-100/50' : 'from-purple-50 to-indigo-50 border-b border-purple-100/50'} px-6 py-6`}
+                >
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={`p-2 bg-white rounded-md shadow-sm border ${isTotalTimeLimitLocked() ? 'border-amber-100' : 'border-purple-100'}`}>
+                      <div
+                        className={`p-2 bg-white rounded-md shadow-sm border ${isTotalTimeLimitLocked() ? 'border-amber-100' : 'border-purple-100'}`}
+                      >
                         {isTotalTimeLimitLocked() ? (
                           <Lock className="w-4 h-4 text-amber-600" />
                         ) : (
@@ -2192,7 +2196,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 </div>
                 <CardContent className="space-y-4 pt-4 pb-6 px-6 bg-white">
                   <div>
-                    <Label htmlFor="total-time-limit" className="mb-2 block text-sm flex items-center gap-2">
+                    <Label
+                      htmlFor="total-time-limit"
+                      className="mb-2 block text-sm flex items-center gap-2"
+                    >
                       Daily Time Limit (minutes)
                       {isTotalTimeLimitLocked() && (
                         <span className="text-[10px] text-amber-600 font-normal">
@@ -2204,7 +2211,9 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       id="total-time-limit"
                       type="number"
                       min="5"
-                      max={isTotalTimeLimitLocked() ? (limitsSettings.totalDailyTimeLimit || 60) : 480}
+                      max={
+                        isTotalTimeLimitLocked() ? limitsSettings.totalDailyTimeLimit || 60 : 480
+                      }
                       value={totalTimeLimit}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const newLimit = Number.parseInt(e.target.value) || 60;
@@ -2233,8 +2242,8 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         <div className="text-xs text-amber-800">
                           <p className="font-medium mb-1">Limit locked for today</p>
                           <p className="text-amber-700">
-                            Since you&apos;ve started watching, you can only decrease the limit to prevent bypassing.
-                            The lock resets at midnight.
+                            Since you&apos;ve started watching, you can only decrease the limit to
+                            prevent bypassing. The lock resets at midnight.
                           </p>
                         </div>
                       </div>
@@ -2248,7 +2257,8 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                         <div className="text-xs text-blue-800">
                           <p className="font-medium mb-1">Mode activated</p>
                           <p className="text-blue-700">
-                            You can freely adjust the limit now. Once you start watching, increasing the limit will be blocked until midnight.
+                            You can freely adjust the limit now. Once you start watching, increasing
+                            the limit will be blocked until midnight.
                           </p>
                         </div>
                       </div>
@@ -2296,12 +2306,16 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       </p>
                       <div className="space-y-2 text-xs">
                         <div>
-                          <p className="text-green-700 font-medium mb-1">What you can do:</p>
-                          <p className="text-green-600 pl-2">• Switch to another limit mode at any time</p>
+                          <p className="text-gray-700 font-medium mb-1">What you can do:</p>
+                          <p className="text-gray-600 pl-2">
+                            • Switch to another limit mode at any time
+                          </p>
                         </div>
                         <div>
-                          <p className="text-red-700 font-medium mb-1">What you can&apos;t do:</p>
-                          <p className="text-red-600 pl-2">• Disable limits again until midnight</p>
+                          <p className="text-gray-700 font-medium mb-1">What you can&apos;t do:</p>
+                          <p className="text-gray-600 pl-2">
+                            • Disable limits again until midnight
+                          </p>
                         </div>
                       </div>
                     </div>
