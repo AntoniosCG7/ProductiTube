@@ -1416,11 +1416,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   <CardContent className="pt-3 pb-4 px-5 bg-gradient-to-b from-white to-gray-50/30">
                     <div className="space-y-3">
                       <div className="flex items-baseline justify-center gap-1">
-                        <span className={`text-xl font-bold ${totalVideosWatched >= totalVideoLimit ? 'text-red-600' : 'text-green-600'}`}>
+                        <span
+                          className={`text-xl font-bold ${totalVideosWatched >= totalVideoLimit ? 'text-red-600' : 'text-green-600'}`}
+                        >
                           {totalVideosWatched}
                         </span>
                         <span className="text-base text-gray-400 font-medium">/</span>
-                        <span className="text-base text-gray-600 font-semibold">{totalVideoLimit}</span>
+                        <span className="text-base text-gray-600 font-semibold">
+                          {totalVideoLimit}
+                        </span>
                         <span className="text-xs text-gray-500 ml-1">videos</span>
                       </div>
 
@@ -1434,13 +1438,16 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           />
                         </div>
                         <div className="flex justify-between items-center text-xs">
-                          <span className={`font-medium ${totalVideosWatched >= totalVideoLimit ? 'text-red-600' : 'text-gray-600'}`}>
+                          <span
+                            className={`font-medium ${totalVideosWatched >= totalVideoLimit ? 'text-red-600' : 'text-gray-600'}`}
+                          >
                             {totalVideosWatched >= totalVideoLimit
                               ? 'Limit reached'
                               : `${totalVideoLimit - totalVideosWatched} remaining`}
                           </span>
                           <span className="text-gray-500 font-medium">
-                            {Math.round(getProgressPercentage(totalVideosWatched, totalVideoLimit))}%
+                            {Math.round(getProgressPercentage(totalVideosWatched, totalVideoLimit))}
+                            %
                           </span>
                         </div>
                       </div>
@@ -1754,11 +1761,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   <CardContent className="pt-3 pb-4 px-5 bg-gradient-to-b from-white to-gray-50/30">
                     <div className="space-y-3">
                       <div className="flex items-baseline justify-center gap-1">
-                        <span className={`text-xl font-bold ${Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100) ? 'text-red-600' : 'text-blue-600'}`}>
+                        <span
+                          className={`text-xl font-bold ${Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100) ? 'text-red-600' : 'text-blue-600'}`}
+                        >
                           {formatTime(totalCategoryTimeWatched)}
                         </span>
                         <span className="text-base text-gray-400 font-medium">/</span>
-                        <span className="text-base text-gray-600 font-semibold">{formatTime(totalCategoryTimeLimit)}</span>
+                        <span className="text-base text-gray-600 font-semibold">
+                          {formatTime(totalCategoryTimeLimit)}
+                        </span>
                       </div>
 
                       <div className="space-y-1.5">
@@ -1771,13 +1782,22 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           />
                         </div>
                         <div className="flex justify-between items-center text-xs">
-                          <span className={`font-medium ${Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100) ? 'text-red-600' : 'text-gray-600'}`}>
-                            {Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100)
+                          <span
+                            className={`font-medium ${Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100) ? 'text-red-600' : 'text-gray-600'}`}
+                          >
+                            {Math.round(totalCategoryTimeWatched * 100) >=
+                            Math.round(totalCategoryTimeLimit * 100)
                               ? 'Limit reached'
                               : `${formatTime(totalCategoryTimeLimit - totalCategoryTimeWatched)} remaining`}
                           </span>
                           <span className="text-gray-500 font-medium">
-                            {Math.round(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit))}%
+                            {Math.round(
+                              getProgressPercentage(
+                                totalCategoryTimeWatched,
+                                totalCategoryTimeLimit
+                              )
+                            )}
+                            %
                           </span>
                         </div>
                       </div>
@@ -2081,7 +2101,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
           {/* Mode 3: Total Time-Based Limit */}
           {activeMode === 'time-total' && (
             <>
-              {isTotalLimitSaved && (
+              {isTotalLimitSaved && totalTimeWatched > 0 && (
                 <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
                   <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100/50 px-5 py-3">
                     <div className="flex items-center justify-center gap-2">
@@ -2094,7 +2114,9 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   <CardContent className="pt-3 pb-4 px-5 bg-gradient-to-b from-white to-gray-50/30">
                     <div className="space-y-3">
                       <div className="flex items-baseline justify-center gap-1">
-                        <span className={`text-xl font-bold ${totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? 'text-red-600' : 'text-purple-600'}`}>
+                        <span
+                          className={`text-xl font-bold ${totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? 'text-red-600' : 'text-purple-600'}`}
+                        >
                           {formatTime(totalTimeWatched)}
                         </span>
                         <span className="text-base text-gray-400 font-medium">/</span>
@@ -2113,13 +2135,21 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           />
                         </div>
                         <div className="flex justify-between items-center text-xs">
-                          <span className={`font-medium ${totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? 'text-red-600' : 'text-gray-600'}`}>
+                          <span
+                            className={`font-medium ${totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? 'text-red-600' : 'text-gray-600'}`}
+                          >
                             {totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60)
                               ? 'Limit reached'
                               : `${formatTime((limitsSettings.totalDailyTimeLimit || 60) - totalTimeWatched)} remaining`}
                           </span>
                           <span className="text-gray-500 font-medium">
-                            {Math.round(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60))}%
+                            {Math.round(
+                              getProgressPercentage(
+                                totalTimeWatched,
+                                limitsSettings.totalDailyTimeLimit || 60
+                              )
+                            )}
+                            %
                           </span>
                         </div>
                       </div>
@@ -2129,16 +2159,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               )}
 
               <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
-                <div
-                  className={`bg-gradient-to-r ${isTotalTimeLimitLocked() ? 'from-amber-50 to-orange-50 border-b border-amber-100/50' : 'from-purple-50 to-indigo-50 border-b border-purple-100/50'} px-6 py-6`}
-                >
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100/50 px-6 py-6">
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div
-                        className={`p-2 bg-white rounded-md shadow-sm border ${isTotalTimeLimitLocked() ? 'border-amber-100' : 'border-purple-100'}`}
-                      >
+                      <div className="p-2 bg-white rounded-md shadow-sm border border-purple-100">
                         {isTotalTimeLimitLocked() ? (
-                          <Lock className="w-4 h-4 text-amber-600" />
+                          <Lock className="w-4 h-4 text-purple-600" />
                         ) : (
                           <Timer className="w-4 h-4 text-purple-600" />
                         )}
@@ -2154,11 +2180,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                     </div>
                     <Button
                       onClick={handleSaveTimeLimit}
-                      className={`h-8 px-3 text-xs bg-white border hover:bg-white hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0 ${
-                        isTotalTimeLimitLocked()
-                          ? 'text-amber-600 border-amber-200 hover:border-amber-300'
-                          : 'text-black-600 border-purple-200 hover:border-purple-300'
-                      }`}
+                      className="h-8 px-3 text-xs bg-white border hover:bg-white hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0 text-purple-600 border-purple-200 hover:border-purple-300"
                     >
                       <Save className="w-4 h-4 mr-1.5" />
                       Save
@@ -2193,11 +2215,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           setTotalTimeLimit(Math.max(newLimit, minLimit));
                         }
                       }}
-                      className={`focus-visible:ring-[1.5px] text-sm h-8 ${
-                        isTotalTimeLimitLocked()
-                          ? 'focus-visible:ring-amber-500 focus-visible:border-amber-500 border-amber-200'
-                          : 'focus-visible:ring-red-500 focus-visible:border-red-500'
-                      }`}
+                      className="focus-visible:ring-[1.5px] text-sm h-8 focus-visible:ring-purple-500 focus-visible:border-purple-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Total YouTube watch time allowed per day ({formatTime(totalTimeLimit)})
@@ -2205,12 +2223,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   </div>
 
                   {isTotalTimeLimitLocked() && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                       <div className="flex items-start gap-2">
-                        <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <div className="text-xs text-amber-800">
+                        <Lock className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-purple-800">
                           <p className="font-medium mb-1">Limit locked for today</p>
-                          <p className="text-amber-700">
+                          <p className="text-purple-700">
                             Since you&apos;ve started watching, you can only decrease the limit to
                             prevent bypassing. The lock resets at midnight.
                           </p>
@@ -2220,12 +2238,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   )}
 
                   {isTotalTimeModeActivatedToday() && !isTotalTimeLimitLocked() && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                       <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <div className="text-xs text-blue-800">
+                        <AlertCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-purple-800">
                           <p className="font-medium mb-1">Mode activated</p>
-                          <p className="text-blue-700">
+                          <p className="text-purple-700">
                             You can freely adjust the limit now. Once you start watching, increasing
                             the limit will be blocked until midnight.
                           </p>
