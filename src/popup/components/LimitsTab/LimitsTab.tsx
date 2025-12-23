@@ -539,26 +539,29 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const formatTime = (minutes: number) => {
-    const roundedMinutes = Math.round(minutes * 100) / 100;
-    const hours = Math.floor(roundedMinutes / 60);
-    const mins = roundedMinutes % 60;
+    const totalSeconds = Math.round(minutes * 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
 
     if (hours > 0) {
-      if (mins === 0) {
+      if (mins === 0 && secs === 0) {
         return `${hours}h`;
-      } else if (mins === Math.floor(mins)) {
-        return `${hours}h ${Math.floor(mins)}m`;
+      } else if (secs === 0) {
+        return `${hours}h ${mins}m`;
       } else {
-        return `${hours}h ${mins.toFixed(2)}m`;
+        return `${hours}h ${mins}m ${secs}s`;
       }
     }
 
-    if (roundedMinutes === 0) {
+    if (mins === 0 && secs === 0) {
       return '0m';
-    } else if (roundedMinutes === Math.floor(roundedMinutes)) {
-      return `${Math.floor(roundedMinutes)}m`;
+    } else if (secs === 0) {
+      return `${mins}m`;
+    } else if (mins === 0) {
+      return `${secs}s`;
     } else {
-      return `${roundedMinutes.toFixed(2)}m`;
+      return `${mins}m ${secs}s`;
     }
   };
 
