@@ -19,6 +19,13 @@ const Popup: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState<TabId>('limits');
   const [settings, updateSettings, error, isRateLimited, resetSettings] = useSettings();
   const { limitsSettings, updateLimitsSettings, error: limitsError } = useLimitsSettings();
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
 
   const updateSetting = React.useCallback(
     async (key: keyof Settings, value: boolean) => {
@@ -62,7 +69,7 @@ const Popup: React.FC = () => {
         </Alert>
       )}
 
-      <div className="px-4 flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
+      <div ref={scrollContainerRef} className="px-4 flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
         {activeTab === 'controls' && (
           <ControlsTab settings={settings} updateSetting={updateSetting} />
         )}
