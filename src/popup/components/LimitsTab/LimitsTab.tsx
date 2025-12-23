@@ -110,6 +110,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const [restoredCategoriesInfo, setRestoredCategoriesInfo] = useState<{
     categories: Array<{ name: string; originalLimit: number | string; newLimit: number | string }>;
   } | null>(null);
+  const [lastCategoryBlockedDialog, setLastCategoryBlockedDialog] = useState(false);
 
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
 
@@ -821,6 +822,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleDeleteClick = (categoryId: string, categoryName: string) => {
+    const currentModeCategories = getCurrentModeCategories();
+    const isCategoryBasedMode = activeMode === 'video-count' || activeMode === 'time-category';
+    const isLastCategory = currentModeCategories.length === 1;
+
+    if (limitsSettings.isLimitsEnabled && isCategoryBasedMode && isLastCategory) {
+      setLastCategoryBlockedDialog(true);
+      return;
+    }
+
     setDeleteConfirmation({
       categoryId,
       categoryName,
@@ -2641,6 +2651,36 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             </Button>
             <Button variant="outline" onClick={cancelDelete} className="h-9 text-sm">
               Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Last Category Blocked Dialog */}
+      <Dialog
+        open={lastCategoryBlockedDialog}
+        onOpenChange={(open) => !open && setLastCategoryBlockedDialog(false)}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              At Least One Category Required
+            </DialogTitle>
+            <DialogDescription className="text-sm text-center">
+              You can&apos;t remove the last category while a category-based limit mode is active.
+              <span className="block mt-2 text-gray-600">
+                Add another category first, or disable the limit mode.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setLastCategoryBlockedDialog(false)}
+              className="flex-1 h-9 text-sm"
+            >
+              Got It
             </Button>
           </div>
         </DialogContent>
