@@ -2220,11 +2220,14 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       value={totalTimeLimit}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const newLimit = Number.parseInt(e.target.value) || 60;
+                        const minLimit = 5;
                         if (isTotalTimeLimitLocked()) {
                           const currentSavedLimit = limitsSettings.totalDailyTimeLimit || 60;
-                          setTotalTimeLimit(Math.min(newLimit, currentSavedLimit));
+                          setTotalTimeLimit(
+                            Math.min(Math.max(newLimit, minLimit), currentSavedLimit)
+                          );
                         } else {
-                          setTotalTimeLimit(newLimit);
+                          setTotalTimeLimit(Math.max(newLimit, minLimit));
                         }
                       }}
                       className={`focus-visible:ring-[1.5px] text-sm h-8 ${
