@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -1405,43 +1404,45 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             <>
               {currentModeCategories.length > 0 && (
                 <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100/50 px-6 py-6">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-white rounded-md shadow-sm border border-green-100">
-                          <Hash className="w-4 h-4 text-green-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-sm font-bold text-gray-900 leading-tight">
-                            Today&apos;s Usage
-                          </CardTitle>
-                          <p className="text-xs text-gray-600 mt-0.5">Track daily consumption</p>
-                        </div>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100/50 px-5 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="p-1.5 bg-white rounded-md shadow-sm border border-green-100">
+                        <Hash className="w-3.5 h-3.5 text-green-600" />
                       </div>
+                      <span className="text-sm font-bold text-gray-900">Today&apos;s Usage</span>
                     </div>
                   </div>
 
-                  <CardContent className="pt-2 pb-6 px-6 bg-gradient-to-b from-white to-gray-50/30">
+                  <CardContent className="pt-3 pb-4 px-5 bg-gradient-to-b from-white to-gray-50/30">
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gradient-to-br from-white to-gray-50/60 rounded-xl p-3 border border-gray-100/60 shadow-sm">
-                          <div className="text-xs text-gray-600 mb-1 font-medium">Watched</div>
-                          <div className="text-xl font-bold text-gray-800">
-                            {totalVideosWatched}
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-white to-gray-50/60 rounded-xl p-3 border border-gray-100/60 shadow-sm">
-                          <div className="text-xs text-gray-600 mb-1 font-medium">Limit</div>
-                          <div className="text-xl font-bold text-gray-800">{totalVideoLimit}</div>
-                        </div>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className={`text-xl font-bold ${totalVideosWatched >= totalVideoLimit ? 'text-red-600' : 'text-green-600'}`}>
+                          {totalVideosWatched}
+                        </span>
+                        <span className="text-base text-gray-400 font-medium">/</span>
+                        <span className="text-base text-gray-600 font-semibold">{totalVideoLimit}</span>
+                        <span className="text-xs text-gray-500 ml-1">videos</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalVideosWatched, totalVideoLimit), totalVideosWatched >= totalVideoLimit)}`}
-                          style={{
-                            width: `${Math.min(getProgressPercentage(totalVideosWatched, totalVideoLimit), 100)}%`,
-                          }}
-                        />
+
+                      <div className="space-y-1.5">
+                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalVideosWatched, totalVideoLimit), totalVideosWatched >= totalVideoLimit)}`}
+                            style={{
+                              width: `${Math.min(getProgressPercentage(totalVideosWatched, totalVideoLimit), 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className={`font-medium ${totalVideosWatched >= totalVideoLimit ? 'text-red-600' : 'text-gray-600'}`}>
+                            {totalVideosWatched >= totalVideoLimit
+                              ? 'Limit reached'
+                              : `${totalVideoLimit - totalVideosWatched} remaining`}
+                          </span>
+                          <span className="text-gray-500 font-medium">
+                            {Math.round(getProgressPercentage(totalVideosWatched, totalVideoLimit))}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -1742,46 +1743,43 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             <>
               {currentModeCategories.length > 0 && (
                 <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100/50 px-6 py-6">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-white rounded-md shadow-sm border border-blue-100">
-                          <Hourglass className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-sm font-bold text-gray-900 leading-tight">
-                            Today&apos;s Time Usage
-                          </CardTitle>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            Monitor your daily watch time
-                          </p>
-                        </div>
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100/50 px-5 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="p-1.5 bg-white rounded-md shadow-sm border border-blue-100">
+                        <Hourglass className="w-3.5 h-3.5 text-blue-600" />
                       </div>
+                      <span className="text-sm font-bold text-gray-900">Today&apos;s Usage</span>
                     </div>
                   </div>
-                  <CardContent className="pt-2 pb-6 px-6 bg-gradient-to-b from-white to-gray-50/30">
+                  <CardContent className="pt-3 pb-4 px-5 bg-gradient-to-b from-white to-gray-50/30">
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gradient-to-br from-white to-gray-50/60 rounded-xl p-3 border border-gray-100/60 shadow-sm">
-                          <div className="text-xs text-gray-600 mb-1 font-medium">Time Watched</div>
-                          <div className="text-xl font-bold text-gray-800">
-                            {formatTime(totalCategoryTimeWatched)}
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-white to-gray-50/60 rounded-xl p-3 border border-gray-100/60 shadow-sm">
-                          <div className="text-xs text-gray-600 mb-1 font-medium">Limit</div>
-                          <div className="text-xl font-bold text-gray-800">
-                            {formatTime(totalCategoryTimeLimit)}
-                          </div>
-                        </div>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className={`text-xl font-bold ${Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100) ? 'text-red-600' : 'text-blue-600'}`}>
+                          {formatTime(totalCategoryTimeWatched)}
+                        </span>
+                        <span className="text-base text-gray-400 font-medium">/</span>
+                        <span className="text-base text-gray-600 font-semibold">{formatTime(totalCategoryTimeLimit)}</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit), Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100))}`}
-                          style={{
-                            width: `${Math.min(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit), 100)}%`,
-                          }}
-                        />
+
+                      <div className="space-y-1.5">
+                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit), Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100))}`}
+                            style={{
+                              width: `${Math.min(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit), 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className={`font-medium ${Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100) ? 'text-red-600' : 'text-gray-600'}`}>
+                            {Math.round(totalCategoryTimeWatched * 100) >= Math.round(totalCategoryTimeLimit * 100)
+                              ? 'Limit reached'
+                              : `${formatTime(totalCategoryTimeLimit - totalCategoryTimeWatched)} remaining`}
+                          </span>
+                          <span className="text-gray-500 font-medium">
+                            {Math.round(getProgressPercentage(totalCategoryTimeWatched, totalCategoryTimeLimit))}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -2085,75 +2083,45 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             <>
               {isTotalLimitSaved && (
                 <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
-                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100/50 px-6 py-6">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-white rounded-md shadow-sm border border-purple-100">
-                          <Timer className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-800 font-bold leading-tight">
-                            Today&apos;s Usage
-                          </p>
-                          <p className="text-xs font-normal text-gray-600 mt-0.5">
-                            Your daily progress
-                          </p>
-                        </div>
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100/50 px-5 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="p-1.5 bg-white rounded-md shadow-sm border border-purple-100">
+                        <Timer className="w-3.5 h-3.5 text-purple-600" />
                       </div>
+                      <span className="text-sm font-bold text-gray-900">Today&apos;s Usage</span>
                     </div>
                   </div>
-                  <CardContent className="pt-2 pb-4 px-6 bg-gradient-to-b from-white to-gray-50/30">
+                  <CardContent className="pt-3 pb-4 px-5 bg-gradient-to-b from-white to-gray-50/30">
                     <div className="space-y-3">
-                      <div className="text-center">
-                        <div className="text-xl font-bold mb-2">{formatTime(totalTimeWatched)}</div>
-                        <div className="text-xs text-gray-600">
-                          of {formatTime(limitsSettings.totalDailyTimeLimit || 60)} used today
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className={`text-xl font-bold ${totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? 'text-red-600' : 'text-purple-600'}`}>
+                          {formatTime(totalTimeWatched)}
+                        </span>
+                        <span className="text-base text-gray-400 font-medium">/</span>
+                        <span className="text-base text-gray-600 font-semibold">
+                          {formatTime(limitsSettings.totalDailyTimeLimit || 60)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60), totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60))}`}
+                            style={{
+                              width: `${Math.min(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60), 100)}%`,
+                            }}
+                          />
                         </div>
-                      </div>
-
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className={`h-2.5 rounded-full transition-all duration-500 ${getProgressColor(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60), totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60))}`}
-                          style={{
-                            width: `${Math.min(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60), 100)}%`,
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">
-                          {totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? (
-                            <span className="text-red-600 text-xs font-medium flex items-center gap-1">
-                              <AlertCircle className="w-4 h-4" />
-                              Time limit reached
-                            </span>
-                          ) : (
-                            <div className="text-xs">
-                              {formatTime(
-                                (limitsSettings.totalDailyTimeLimit || 60) - totalTimeWatched
-                              )}{' '}
-                              remaining
-                            </div>
-                          )}
-                        </span>
-                        <span className="text-xs font-medium">
-                          {Math.round(
-                            getProgressPercentage(
-                              totalTimeWatched,
-                              limitsSettings.totalDailyTimeLimit || 60
-                            )
-                          )}
-                          %
-                        </span>
-                      </div>
-
-                      <div className="text-center py-4 px-4 bg-gradient-to-br from-gray-50/80 to-gray-100/60 rounded-xl border border-gray-200/50 backdrop-blur-sm">
-                        <p className="text-xs text-gray-600 mb-2">
-                          This mode tracks all YouTube videos regardless of content type
-                        </p>
-                        <Badge variant="secondary" className="text-[10px]">
-                          Simple & Universal
-                        </Badge>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className={`font-medium ${totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60) ? 'text-red-600' : 'text-gray-600'}`}>
+                            {totalTimeWatched >= (limitsSettings.totalDailyTimeLimit || 60)
+                              ? 'Limit reached'
+                              : `${formatTime((limitsSettings.totalDailyTimeLimit || 60) - totalTimeWatched)} remaining`}
+                          </span>
+                          <span className="text-gray-500 font-medium">
+                            {Math.round(getProgressPercentage(totalTimeWatched, limitsSettings.totalDailyTimeLimit || 60))}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -2204,11 +2172,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       className="mb-2 block text-sm flex items-center gap-2"
                     >
                       Daily Time Limit (minutes)
-                      {isTotalTimeLimitLocked() && (
-                        <span className="text-[10px] text-amber-600 font-normal">
-                          (max: {formatTime(limitsSettings.totalDailyTimeLimit || 60)})
-                        </span>
-                      )}
                     </Label>
                     <Input
                       id="total-time-limit"

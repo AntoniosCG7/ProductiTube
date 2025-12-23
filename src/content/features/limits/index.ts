@@ -1878,6 +1878,16 @@ const handleCategorySelection = async (categoryId: string): Promise<void> => {
 const showLimitBlockingModal = (category: VideoCategory): void => {
   removeModal();
 
+  const activeMode = state.settings?.activeMode || 'video-count';
+  const isTimeMode = activeMode === 'time-category';
+  const timeLimit = category.dailyTimeLimit || 60;
+  const videoLimit = category.dailyLimitCount || 1;
+  const timeWatched = isTimeMode ? getTimeWatchedToday(category.id) : (category.videosWatchedToday || 0);
+  const videosWatched = category.videosWatchedToday || 0;
+
+  const { hours, minutes } = getTimeUntilMidnight();
+  const resetTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
   const message = document.createElement('div');
   message.className = LIMIT_BLOCKING_MESSAGE_CLASS;
   message.innerHTML = `
@@ -1885,14 +1895,27 @@ const showLimitBlockingModal = (category: VideoCategory): void => {
       <div class="productitube-limit-icon warning">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
-          <path d="m15 9-6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="m9 9 6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 8v4" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="16" r="1" fill="#ef4444"/>
         </svg>
       </div>
-      <h3>Time Limit Reached</h3>
+      <h3>Category Limit Reached</h3>
+      <div class="productitube-category-badge-container">
+        <span class="productitube-category-badge-large" style="background-color: ${category.color}20; color: ${category.color}; border: 1px solid ${category.color}40;">
+          ${category.name}
+        </span>
+      </div>
+      <div class="productitube-usage-stats">
+        <div class="productitube-stat">
+          <span class="productitube-stat-value">${isTimeMode ? formatTime(timeWatched) : videosWatched}</span>
+          <span class="productitube-stat-separator">/</span>
+          <span class="productitube-stat-limit">${isTimeMode ? formatTime(timeLimit) : videoLimit}</span>
+        </div>
+        <span class="productitube-stat-label">${isTimeMode ? 'watched today' : 'videos today'}</span>
+      </div>
       <div class="productitube-limit-text">
-        <p>You've reached your daily time limit for the <strong>${category.name}</strong> category.</p>
-        <p>Time to take a break and explore other activities!</p>
+        <p>You've used your full daily ${isTimeMode ? 'time' : 'video'} allowance for this category.</p>
+        <p class="productitube-reset-info">Resets in <strong>${resetTime}</strong> at midnight</p>
       </div>
       <div class="productitube-limit-actions">
         <button id="productitube-home-btn" class="productitube-btn-primary">Go to Home Feed</button>
@@ -1908,8 +1931,8 @@ const showLimitBlockingModal = (category: VideoCategory): void => {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.9);
-      backdrop-filter: blur(6px);
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1918,106 +1941,147 @@ const showLimitBlockingModal = (category: VideoCategory): void => {
       animation: productitube-fade-in 0.3s ease-out;
       padding: 16px;
     }
-    
+
     .productitube-limit-blocking-content {
-      background: white;
-      border-radius: 20px;
-      padding: 40px 32px 32px;
-      max-width: 420px;
+      background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+      border-radius: 24px;
+      padding: 36px 32px 32px;
+      max-width: 380px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       animation: productitube-scale-in 0.3s ease-out;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.06);
     }
-    
+
     .productitube-limit-icon.warning {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 24px;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
     }
-    
+
     .productitube-limit-blocking-content h3 {
-      margin: 0 0 20px 0;
-      font-size: 24px;
+      margin: 0 0 16px 0;
+      font-size: 22px;
       font-weight: 700;
       color: #dc2626;
       line-height: 1.2;
     }
-    
-    .productitube-limit-text {
-      margin-bottom: 28px;
+
+    .productitube-category-badge-container {
+      margin-bottom: 20px;
     }
-    
+
+    .productitube-category-badge-large {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .productitube-usage-stats {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .productitube-stat {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .productitube-stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #dc2626;
+    }
+
+    .productitube-stat-separator {
+      font-size: 20px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .productitube-stat-limit {
+      font-size: 20px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .productitube-stat-label {
+      font-size: 13px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .productitube-limit-text {
+      margin-bottom: 24px;
+    }
+
     .productitube-limit-blocking-content p {
-      margin: 0 0 12px 0;
-      font-size: 15px;
+      margin: 0 0 8px 0;
+      font-size: 14px;
       color: #64748b;
       line-height: 1.5;
     }
-    
+
     .productitube-limit-blocking-content p:last-child {
       margin-bottom: 0;
     }
-    
+
+    .productitube-reset-info {
+      font-size: 13px !important;
+      color: #94a3b8 !important;
+      margin-top: 4px !important;
+    }
+
+    .productitube-reset-info strong {
+      color: #64748b;
+    }
+
     .productitube-limit-blocking-content strong {
       color: #1e293b;
       font-weight: 600;
     }
-    
+
     .productitube-limit-actions {
       display: flex;
       gap: 12px;
       justify-content: center;
     }
-    
+
     .productitube-btn-primary {
-      padding: 12px 28px;
+      padding: 14px 32px;
       border: none;
-      border-radius: 8px;
+      border-radius: 12px;
       background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
     }
-    
+
     .productitube-btn-primary:hover {
-      transform: translateY(-1px);
+      transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
     }
-    
+
     .productitube-btn-primary:active {
-      transform: translateY(0);
-    }
-    
-    .productitube-btn-secondary {
-      padding: 12px 24px;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      background: white;
-      color: #475569;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .productitube-btn-secondary:hover {
-      border-color: #cbd5e1;
-      background: #f8fafc;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    .productitube-btn-secondary:active {
       transform: translateY(0);
     }
   `;
@@ -2039,23 +2103,29 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
 
   const activeMode = state.settings?.activeMode || 'video-count';
   const isTimeMode = activeMode === 'time-category';
+  const timeLimit = category.dailyTimeLimit || 60;
 
   const message = document.createElement('div');
   message.className = LIMIT_MESSAGE_CLASS;
   message.innerHTML = `
     <div class="productitube-limit-content">
-      <div class="productitube-limit-icon success">
+      <div class="productitube-limit-icon last-video">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="m9 11 3 3L22 4" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2"/>
+          <path d="M12 6v6l4 2" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <h3>Enjoy this video!</h3>
-      <div class="productitube-limit-text">
-        <p>This video has been ${isTimeMode ? 'added to your watch time' : 'counted'} for your <strong>${category.name}</strong> category.</p>
-        <p>You've now reached your daily ${isTimeMode ? 'time' : 'video'} limit for this category.</p>
+      <h3>Last One for Today!</h3>
+      <div class="productitube-category-badge-container">
+        <span class="productitube-category-badge-large" style="background-color: ${category.color}20; color: ${category.color}; border: 1px solid ${category.color}40;">
+          ${category.name}
+        </span>
       </div>
-      <button id="productitube-limit-ok" class="productitube-btn-primary">Start Watching</button>
+      <div class="productitube-limit-text">
+        <p>This is your <strong>final ${isTimeMode ? formatTime(timeLimit) : 'video'}</strong> in this category for today.</p>
+        <p class="productitube-subtext">Enjoy it! Your limit resets at midnight.</p>
+      </div>
+      <button id="productitube-limit-ok" class="productitube-btn-watch">Watch Now</button>
     </div>
   `;
 
@@ -2067,8 +2137,8 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(6px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2077,80 +2147,98 @@ const showLimitReachedMessage = (category: VideoCategory): void => {
       animation: productitube-fade-in 0.3s ease-out;
       padding: 16px;
     }
-    
+
     .productitube-limit-content {
-      background: white;
-      border-radius: 20px;
-      padding: 40px 32px 32px;
-      max-width: 420px;
+      background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
+      border-radius: 24px;
+      padding: 36px 32px 32px;
+      max-width: 380px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       animation: productitube-scale-in 0.3s ease-out;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.2);
     }
-    
+
     .productitube-limit-icon {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 24px;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    
-    .productitube-limit-icon.success {
-      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+
+    .productitube-limit-icon.last-video {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
     }
-    
+
     .productitube-limit-content h3 {
-      margin: 0 0 20px 0;
-      font-size: 24px;
+      margin: 0 0 16px 0;
+      font-size: 22px;
       font-weight: 700;
-      color: #1e293b;
+      color: #b45309;
       line-height: 1.2;
     }
-    
-    .productitube-limit-text {
-      margin-bottom: 28px;
+
+    .productitube-category-badge-container {
+      margin-bottom: 20px;
     }
-    
+
+    .productitube-category-badge-large {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .productitube-limit-text {
+      margin-bottom: 24px;
+    }
+
     .productitube-limit-content p {
-      margin: 0 0 12px 0;
+      margin: 0 0 8px 0;
       font-size: 15px;
-      color: #64748b;
+      color: #78716c;
       line-height: 1.5;
     }
-    
+
     .productitube-limit-content p:last-child {
       margin-bottom: 0;
     }
-    
+
+    .productitube-subtext {
+      font-size: 13px !important;
+      color: #a8a29e !important;
+    }
+
     .productitube-limit-content strong {
-      color: #1e293b;
+      color: #44403c;
       font-weight: 600;
     }
-    
-    .productitube-btn-primary {
-      padding: 12px 28px;
+
+    .productitube-btn-watch {
+      padding: 14px 36px;
       border: none;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border-radius: 12px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
       color: white;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
     }
-    
-    .productitube-btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+
+    .productitube-btn-watch:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(245, 158, 11, 0.45);
     }
-    
-    .productitube-btn-primary:active {
+
+    .productitube-btn-watch:active {
       transform: translateY(0);
     }
   `;
@@ -2177,25 +2265,35 @@ const showTotalTimeLimitReachedModal = (): void => {
   removeModal();
 
   const timeWatched = getTotalTimeWatchedToday();
+  const timeLimit = state.settings?.totalDailyTimeLimit || 60;
+  const { hours, minutes } = getTimeUntilMidnight();
+  const resetTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
   const message = document.createElement('div');
   message.className = LIMIT_BLOCKING_MESSAGE_CLASS;
   message.innerHTML = `
-    <div class="productitube-limit-blocking-content">
-      <div class="productitube-limit-icon warning">
+    <div class="productitube-limit-blocking-content productitube-total-limit">
+      <div class="productitube-limit-icon total-time">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/>
-          <path d="m15 9-6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="m9 9 6 6" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="10" stroke="#7c3aed" stroke-width="2"/>
+          <path d="M12 6v6l4 2" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <h3>That's a wrap for today!</h3>
+      <h3>Daily Limit Reached</h3>
+      <div class="productitube-usage-stats total">
+        <div class="productitube-stat">
+          <span class="productitube-stat-value">${formatTime(timeWatched)}</span>
+          <span class="productitube-stat-separator">/</span>
+          <span class="productitube-stat-limit">${formatTime(timeLimit)}</span>
+        </div>
+        <span class="productitube-stat-label">total youtube time today</span>
+      </div>
       <div class="productitube-limit-text">
-        <p>You've watched <strong>${formatTime(timeWatched)}</strong> of YouTube today.</p>
-        <p>Time to explore the world beyond the screen! 🌟</p>
+        <p>You've used your full YouTube allowance for today.</p>
+        <p class="productitube-reset-info">Resets in <strong>${resetTime}</strong> at midnight</p>
       </div>
       <div class="productitube-limit-actions">
-        <button id="productitube-home-btn" class="productitube-btn-primary">Go to Home Feed</button>
+        <button id="productitube-home-btn" class="productitube-btn-primary productitube-btn-purple">Go to Home Feed</button>
       </div>
     </div>
   `;
@@ -2208,8 +2306,8 @@ const showTotalTimeLimitReachedModal = (): void => {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.9);
-      backdrop-filter: blur(6px);
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2218,83 +2316,138 @@ const showTotalTimeLimitReachedModal = (): void => {
       animation: productitube-fade-in 0.3s ease-out;
       padding: 16px;
     }
-    
-    .productitube-limit-blocking-content {
-      background: white;
-      border-radius: 20px;
-      padding: 40px 32px 32px;
-      max-width: 420px;
+
+    .productitube-limit-blocking-content.productitube-total-limit {
+      background: linear-gradient(180deg, #ffffff 0%, #f5f3ff 100%);
+      border-radius: 24px;
+      padding: 36px 32px 32px;
+      max-width: 380px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       animation: productitube-scale-in 0.3s ease-out;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.15);
     }
-    
-    .productitube-limit-icon.warning {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 24px;
+
+    .productitube-limit-icon.total-time {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
     }
-    
-    .productitube-limit-blocking-content h3 {
-      margin: 0 0 20px 0;
-      font-size: 24px;
+
+    .productitube-total-limit h3 {
+      margin: 0 0 16px 0;
+      font-size: 22px;
       font-weight: 700;
-      color: #dc2626;
+      color: #6d28d9;
       line-height: 1.2;
     }
-    
-    .productitube-limit-text {
-      margin-bottom: 28px;
+
+    .productitube-usage-stats.total {
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #e9d5ff;
     }
-    
-    .productitube-limit-blocking-content p {
-      margin: 0 0 12px 0;
-      font-size: 15px;
+
+    .productitube-usage-stats.total .productitube-stat-value {
+      color: #7c3aed;
+    }
+
+    .productitube-stat {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .productitube-stat-value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .productitube-stat-separator {
+      font-size: 20px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .productitube-stat-limit {
+      font-size: 20px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .productitube-stat-label {
+      font-size: 13px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .productitube-limit-text {
+      margin-bottom: 24px;
+    }
+
+    .productitube-total-limit p {
+      margin: 0 0 8px 0;
+      font-size: 14px;
       color: #64748b;
       line-height: 1.5;
     }
-    
-    .productitube-limit-blocking-content p:last-child {
+
+    .productitube-total-limit p:last-child {
       margin-bottom: 0;
     }
-    
-    .productitube-limit-blocking-content strong {
+
+    .productitube-reset-info {
+      font-size: 13px !important;
+      color: #94a3b8 !important;
+      margin-top: 4px !important;
+    }
+
+    .productitube-reset-info strong {
+      color: #64748b;
+    }
+
+    .productitube-total-limit strong {
       color: #1e293b;
       font-weight: 600;
     }
-    
+
     .productitube-limit-actions {
       display: flex;
       gap: 12px;
       justify-content: center;
     }
-    
-    .productitube-btn-primary {
-      padding: 12px 28px;
+
+    .productitube-btn-primary.productitube-btn-purple {
+      padding: 14px 32px;
       border: none;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border-radius: 12px;
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
       color: white;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
     }
-    
-    .productitube-btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+
+    .productitube-btn-purple:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(124, 58, 237, 0.45);
     }
-    
-    .productitube-btn-primary:active {
+
+    .productitube-btn-purple:active {
       transform: translateY(0);
     }
   `;
