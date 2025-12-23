@@ -640,18 +640,32 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       errors.name = 'Category name must be less than 30 characters';
     } else {
       // Check for duplicate category names (case-insensitive)
-      const currentModeCategories = getCurrentModeCategories();
       const normalizedNewName = newCategory.name.trim().toLowerCase();
-      const isDuplicate = currentModeCategories.some((cat: VideoCategory) => {
-        // When editing, allow the same category to keep its name
-        if (editingCategory && cat.id === editingCategory.id) {
-          return false;
-        }
-        return cat.name.toLowerCase() === normalizedNewName;
-      });
 
-      if (isDuplicate) {
-        errors.name = 'A category with this name already exists';
+      if (editingFavorite) {
+        const existingFavorites = limitsSettings.favoriteCategories || [];
+        const isDuplicateFavorite = existingFavorites.some((fav) => {
+          if (fav.id === editingFavorite.id) {
+            return false;
+          }
+          return fav.name.toLowerCase() === normalizedNewName;
+        });
+
+        if (isDuplicateFavorite) {
+          errors.name = 'A favorite with this name already exists';
+        }
+      } else {
+        const currentModeCategories = getCurrentModeCategories();
+        const isDuplicate = currentModeCategories.some((cat: VideoCategory) => {
+          if (editingCategory && cat.id === editingCategory.id) {
+            return false;
+          }
+          return cat.name.toLowerCase() === normalizedNewName;
+        });
+
+        if (isDuplicate) {
+          errors.name = 'A category with this name already exists';
+        }
       }
     }
 
