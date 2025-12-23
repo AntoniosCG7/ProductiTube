@@ -2456,21 +2456,51 @@ const handleVideoLoad = async (): Promise<void> => {
       const timeWatched = getTotalTimeWatchedToday();
 
       if (timeWatched >= timeLimit) {
-        const waitForVideo = () => {
-          const video = document.querySelector('video') as HTMLVideoElement;
-          if (video && video.readyState >= 1) {
-            pauseVideo();
-            showTotalTimeLimitReachedModal();
-          } else {
-            if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
-              const timeoutId = window.setTimeout(waitForVideo, VIDEO_WAIT_TIMEOUT_MS);
-              trackTimeout(timeoutId);
-            }
+        let modalShown = false;
+        let blockedVideo: HTMLVideoElement | null = null;
+
+        const playBlocker = () => {
+          if (blockedVideo && !blockedVideo.paused) {
+            blockedVideo.pause();
           }
         };
 
-        const initialTimeoutId = window.setTimeout(waitForVideo, INITIAL_VIDEO_WAIT_MS);
-        trackTimeout(initialTimeoutId);
+        const blockVideo = () => {
+          const video = document.querySelector('video') as HTMLVideoElement;
+          if (video) {
+            if (video !== blockedVideo) {
+              if (blockedVideo) {
+                blockedVideo.removeEventListener('play', playBlocker);
+              }
+              blockedVideo = video;
+              video.addEventListener('play', playBlocker);
+            }
+            if (!video.paused) {
+              video.pause();
+            }
+            if (video.readyState >= 1 && !modalShown) {
+              modalShown = true;
+              video.removeEventListener('play', playBlocker);
+              showTotalTimeLimitReachedModal();
+              return true;
+            }
+          }
+          return false;
+        };
+
+        if (!blockVideo()) {
+          const waitForVideo = () => {
+            if (!blockVideo()) {
+              if (state.currentVideoUrl === currentUrl && state.isProcessingVideo) {
+                const timeoutId = window.setTimeout(waitForVideo, VIDEO_WAIT_TIMEOUT_MS);
+                trackTimeout(timeoutId);
+              }
+            }
+          };
+
+          const initialTimeoutId = window.setTimeout(waitForVideo, INITIAL_VIDEO_WAIT_MS);
+          trackTimeout(initialTimeoutId);
+        }
         return;
       }
 
