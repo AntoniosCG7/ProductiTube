@@ -87,12 +87,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     categoryName: string;
     isOpen: boolean;
   } | null>(null);
-  const [categoryToggleConfirmation, setCategoryToggleConfirmation] = useState<{
-    categoryId: string;
-    categoryName: string;
-    currentState: boolean;
-    isOpen: boolean;
-  } | null>(null);
   const [favoriteConfirmation, setFavoriteConfirmation] = useState<{
     category: VideoCategory;
     action: 'add' | 'remove';
@@ -642,6 +636,21 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       errors.name = 'Category name must be at least 2 characters';
     } else if (newCategory.name.trim().length > 30) {
       errors.name = 'Category name must be less than 30 characters';
+    } else {
+      // Check for duplicate category names (case-insensitive)
+      const currentModeCategories = getCurrentModeCategories();
+      const normalizedNewName = newCategory.name.trim().toLowerCase();
+      const isDuplicate = currentModeCategories.some((cat: VideoCategory) => {
+        // When editing, allow the same category to keep its name
+        if (editingCategory && cat.id === editingCategory.id) {
+          return false;
+        }
+        return cat.name.toLowerCase() === normalizedNewName;
+      });
+
+      if (isDuplicate) {
+        errors.name = 'A category with this name already exists';
+      }
     }
 
     if (editingCategory && isCategoryLocked(editingCategory)) {
@@ -690,7 +699,43 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     setValidationErrors({});
   };
 
+  /**
+   * Check if limits were already disabled today (for once-per-day restriction)
+   */
+  const wasDisabledToday = (): boolean => {
+    if (!limitsSettings.lastDisabledAt) return false;
+    const lastDisabled = new Date(limitsSettings.lastDisabledAt);
+    const today = new Date();
+    return lastDisabled.toDateString() === today.toDateString();
+  };
+
+  /**
+   * Check if total-time mode was activated today
+   */
+  const isTotalTimeModeActivatedToday = (): boolean => {
+    if (!limitsSettings.totalTimeModeActivatedAt) return false;
+    const activatedAt = new Date(limitsSettings.totalTimeModeActivatedAt);
+    const today = new Date();
+    return activatedAt.toDateString() === today.toDateString();
+  };
+
+  const isTotalTimeLimitLocked = (): boolean => {
+    if (!isTotalTimeModeActivatedToday()) return false;
+    const currentWatchTime = limitsSettings.totalTimeWatchedToday || 0;
+    const watchTimeAtActivation = limitsSettings.totalTimeWatchedAtActivation ?? 0;
+    return currentWatchTime > watchTimeAtActivation;
+  };
+
   const handleModeToggle = (mode: LimitMode, enabled: boolean) => {
+    if (!enabled && wasDisabledToday()) {
+      setModeConfirmation({
+        mode,
+        enabled,
+        isOpen: true,
+      });
+      return;
+    }
+
     setModeConfirmation({
       mode,
       enabled,
@@ -703,9 +748,19 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
     const { mode, enabled } = modeConfirmation;
 
+    if (!enabled && wasDisabledToday()) {
+      setModeConfirmation(null);
+      return;
+    }
+
     if (enabled) {
       setActiveMode(mode);
-      setIsTotalLimitSaved(false);
+
+      if (mode === 'time-total') {
+        setIsTotalLimitSaved(!!limitsSettings.totalDailyTimeLimit);
+      } else {
+        setIsTotalLimitSaved(false);
+      }
 
       if (mode === 'video-count' || mode === 'time-category') {
         updateLimitsSettings({
@@ -718,14 +773,28 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         });
       } else if (mode === 'time-total') {
         setTotalTimeLimit(limitsSettings.totalDailyTimeLimit || 60);
+        const activatedAt = limitsSettings.totalTimeModeActivatedAt;
+        const isActivatedToday =
+          activatedAt && new Date(activatedAt).toDateString() === new Date().toDateString();
+        const currentWatchTime = limitsSettings.totalTimeWatchedToday || 0;
+
         updateLimitsSettings({
           activeMode: mode,
           isLimitsEnabled: true,
           totalDailyTimeLimit: limitsSettings.totalDailyTimeLimit || 60,
+          ...(isActivatedToday
+            ? {}
+            : {
+                totalTimeModeActivatedAt: new Date().toISOString(),
+                totalTimeWatchedAtActivation: currentWatchTime,
+              }),
         });
       }
     } else {
-      updateLimitsSettings({ isLimitsEnabled: false });
+      updateLimitsSettings({
+        isLimitsEnabled: false,
+        lastDisabledAt: new Date().toISOString(),
+      });
     }
 
     setModeConfirmation(null);
@@ -787,27 +856,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const cancelDelete = () => {
     setDeleteConfirmation(null);
-  };
-
-  const confirmCategoryToggle = () => {
-    if (!categoryToggleConfirmation) return;
-
-    const currentModeCategories = getCurrentModeCategories();
-    const updatedCategories = currentModeCategories.map((cat: VideoCategory) =>
-      cat.id === categoryToggleConfirmation.categoryId ? { ...cat, isActive: !cat.isActive } : cat
-    );
-    updateLimitsSettings({
-      categories: {
-        ...limitsSettings.categories,
-        [activeMode]: updatedCategories,
-      },
-    });
-
-    setCategoryToggleConfirmation(null);
-  };
-
-  const cancelCategoryToggle = () => {
-    setCategoryToggleConfirmation(null);
   };
 
   const handleAddCategory = async () => {
@@ -1110,32 +1158,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       dailyTimeLimit: 60,
     });
     clearValidationErrors();
-  };
-
-  const handleToggleCategory = (categoryId: string) => {
-    const currentModeCategories = getCurrentModeCategories();
-    const category = currentModeCategories.find((cat: VideoCategory) => cat.id === categoryId);
-
-    if (!category) return;
-
-    if (category.isActive && (activeMode === 'video-count' || activeMode === 'time-category')) {
-      setCategoryToggleConfirmation({
-        categoryId,
-        categoryName: category.name,
-        currentState: category.isActive,
-        isOpen: true,
-      });
-    } else {
-      const updatedCategories = currentModeCategories.map((cat: VideoCategory) =>
-        cat.id === categoryId ? { ...cat, isActive: !cat.isActive } : cat
-      );
-      updateLimitsSettings({
-        categories: {
-          ...limitsSettings.categories,
-          [activeMode]: updatedCategories,
-        },
-      });
-    }
   };
 
   const handleTogglePreset = (presetName: string) => {
@@ -1456,6 +1478,24 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
+                              {/* Info Banner - Rules for categories */}
+                              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-blue-800 mb-1">
+                                      How category limits work
+                                    </p>
+                                    <ul className="text-blue-700 space-y-0.5 list-disc pl-4">
+                                      <li>Limits lock after you start watching</li>
+                                      <li>Category names can&apos;t be changed after use</li>
+                                      <li>You can always lower limits, never increase</li>
+                                      <li>Everything resets at midnight</li>
+                                    </ul>
+                                  </div>
+                                </div>
+                              </div>
+
                               <Label htmlFor="category-name" className="mb-1 text-xs">
                                 Category Name
                               </Label>
@@ -1643,11 +1683,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                     }`}
                                   />
                                 </Button>
-                                {!category.isActive && (
-                                  <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                                    Disabled
-                                  </Badge>
-                                )}
                               </div>
                               <div className="flex items-center gap-1">
                                 <Button
@@ -1666,11 +1701,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </Button>
-                                <Switch
-                                  checked={category.isActive}
-                                  onCheckedChange={() => handleToggleCategory(category.id)}
-                                  className="scale-75"
-                                />
                               </div>
                             </div>
 
@@ -1790,6 +1820,24 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
+                            {/* Info Banner - Rules for categories */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="font-medium text-blue-800 mb-1">
+                                    How category limits work
+                                  </p>
+                                  <ul className="text-blue-700 space-y-0.5 list-disc pl-4">
+                                    <li>Limits lock after you start watching</li>
+                                    <li>Category names can&apos;t be changed after use</li>
+                                    <li>You can always lower limits, never increase</li>
+                                    <li>Everything resets at midnight</li>
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+
                             <Label htmlFor="category-name" className="mb-1 text-xs">
                               Category Name
                             </Label>
@@ -1976,11 +2024,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                     }`}
                                   />
                                 </Button>
-                                {!category.isActive && (
-                                  <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                                    Disabled
-                                  </Badge>
-                                )}
                               </div>
                               <div className="flex items-center gap-1">
                                 <Button
@@ -1999,11 +2042,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </Button>
-                                <Switch
-                                  checked={category.isActive}
-                                  onCheckedChange={() => handleToggleCategory(category.id)}
-                                  className="scale-75"
-                                />
                               </div>
                             </div>
 
@@ -2120,24 +2158,32 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
               )}
 
               <Card className="bg-white shadow-lg border-0 ring-1 ring-gray-200/60 transition-all duration-500 ease-out hover:shadow-xl hover:ring-gray-300/60 rounded-xl overflow-hidden p-0 gap-2">
-                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100/50 px-6 py-6">
+                <div className={`bg-gradient-to-r ${isTotalTimeLimitLocked() ? 'from-amber-50 to-orange-50 border-b border-amber-100/50' : 'from-purple-50 to-indigo-50 border-b border-purple-100/50'} px-6 py-6`}>
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="p-2 bg-white rounded-md shadow-sm border border-purple-100">
-                        <Timer className="w-4 h-4 text-purple-600" />
+                      <div className={`p-2 bg-white rounded-md shadow-sm border ${isTotalTimeLimitLocked() ? 'border-amber-100' : 'border-purple-100'}`}>
+                        {isTotalTimeLimitLocked() ? (
+                          <Lock className="w-4 h-4 text-amber-600" />
+                        ) : (
+                          <Timer className="w-4 h-4 text-purple-600" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-gray-800 text-sm font-bold leading-tight">
                           Total Daily Time Limit
                         </CardTitle>
-                        <p className="text-xm font-normal text-gray-600 mt-0.5">
+                        <p className="text-xs font-normal text-gray-600 mt-0.5">
                           Set your global time limit
                         </p>
                       </div>
                     </div>
                     <Button
                       onClick={handleSaveTimeLimit}
-                      className="h-8 px-3 text-xs text-black-600 bg-white border border-purple-200 hover:bg-white hover:border-purple-300  hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
+                      className={`h-8 px-3 text-xs bg-white border hover:bg-white hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0 ${
+                        isTotalTimeLimitLocked()
+                          ? 'text-amber-600 border-amber-200 hover:border-amber-300'
+                          : 'text-black-600 border-purple-200 hover:border-purple-300'
+                      }`}
                     >
                       <Save className="w-4 h-4 mr-1.5" />
                       Save
@@ -2146,25 +2192,68 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 </div>
                 <CardContent className="space-y-4 pt-4 pb-6 px-6 bg-white">
                   <div>
-                    <Label htmlFor="total-time-limit" className="mb-2 block text-sm">
+                    <Label htmlFor="total-time-limit" className="mb-2 block text-sm flex items-center gap-2">
                       Daily Time Limit (minutes)
+                      {isTotalTimeLimitLocked() && (
+                        <span className="text-[10px] text-amber-600 font-normal">
+                          (max: {formatTime(limitsSettings.totalDailyTimeLimit || 60)})
+                        </span>
+                      )}
                     </Label>
                     <Input
                       id="total-time-limit"
                       type="number"
                       min="5"
-                      max="480"
+                      max={isTotalTimeLimitLocked() ? (limitsSettings.totalDailyTimeLimit || 60) : 480}
                       value={totalTimeLimit}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const newLimit = Number.parseInt(e.target.value) || 60;
-                        setTotalTimeLimit(newLimit);
+                        if (isTotalTimeLimitLocked()) {
+                          const currentSavedLimit = limitsSettings.totalDailyTimeLimit || 60;
+                          setTotalTimeLimit(Math.min(newLimit, currentSavedLimit));
+                        } else {
+                          setTotalTimeLimit(newLimit);
+                        }
                       }}
-                      className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
+                      className={`focus-visible:ring-[1.5px] text-sm h-8 ${
+                        isTotalTimeLimitLocked()
+                          ? 'focus-visible:ring-amber-500 focus-visible:border-amber-500 border-amber-200'
+                          : 'focus-visible:ring-red-500 focus-visible:border-red-500'
+                      }`}
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Total YouTube watch time allowed per day ({formatTime(totalTimeLimit)})
                     </p>
                   </div>
+
+                  {isTotalTimeLimitLocked() && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <Lock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-amber-800">
+                          <p className="font-medium mb-1">Limit locked for today</p>
+                          <p className="text-amber-700">
+                            Since you&apos;ve started watching, you can only decrease the limit to prevent bypassing.
+                            The lock resets at midnight.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isTotalTimeModeActivatedToday() && !isTotalTimeLimitLocked() && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-blue-800">
+                          <p className="font-medium mb-1">Mode activated</p>
+                          <p className="text-blue-700">
+                            You can freely adjust the limit now. Once you start watching, increasing the limit will be blocked until midnight.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
@@ -2180,72 +2269,138 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
             <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <AlertCircle className="w-5 h-5 text-amber-500" />
-              Confirm Mode Change
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              {modeConfirmation?.enabled ? (
+              {!modeConfirmation?.enabled && wasDisabledToday() ? (
                 <>
-                  Are you sure you want to <strong>enable</strong>{' '}
-                  <span className="font-medium">
-                    {modeConfirmation.mode === 'video-count' && 'Video Count by Category'}
-                    {modeConfirmation.mode === 'time-category' && 'Time Limit by Category'}
-                    {modeConfirmation.mode === 'time-total' && 'Total Time-Based Limit'}
-                  </span>{' '}
-                  mode?
-                  <span className="block mt-2 font-medium">
-                    {(() => {
-                      if (limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation.mode) {
-                        return (
-                          <span className="text-amber-600">
-                            This will switch from your current mode and reset all limits for the new
-                            mode.
-                          </span>
-                        );
-                      } else {
-                        if (modeConfirmation.mode === 'video-count') {
-                          return (
-                            <span className="text-blue-600">
-                              You can create categories and set daily video limits for each one.
-                            </span>
-                          );
-                        } else if (modeConfirmation.mode === 'time-category') {
-                          return (
-                            <span className="text-blue-600">
-                              You can create categories and set daily time limits for each one.
-                            </span>
-                          );
-                        } else {
-                          return (
-                            <span className="text-blue-600">
-                              You can set a single daily time limit for all YouTube videos.
-                            </span>
-                          );
-                        }
-                      }
-                    })()}
-                  </span>
+                  <Lock className="w-5 h-5 text-red-500" />
+                  Disable Not Available
                 </>
               ) : (
                 <>
-                  Are you sure you want to <strong>disable</strong> all video limits?
-                  <span className="block mt-2 text-amber-600 font-medium">
-                    This will turn off all daily restrictions.
-                  </span>
+                  <AlertCircle className="w-5 h-5 text-amber-500" />
+                  {modeConfirmation?.enabled
+                    ? limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation?.mode
+                      ? 'Switch Limit Mode'
+                      : 'Enable Limits'
+                    : 'Disable Limits'}
                 </>
               )}
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {(() => {
+                // Case 1: Blocked - already disabled today
+                if (!modeConfirmation?.enabled && wasDisabledToday()) {
+                  return (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 text-left">
+                      <p className="text-red-800 font-medium mb-3">
+                        Limits were already disabled today.
+                      </p>
+                      <div className="space-y-2 text-xs">
+                        <div>
+                          <p className="text-green-700 font-medium mb-1">What you can do:</p>
+                          <p className="text-green-600 pl-2">• Switch to another limit mode at any time</p>
+                        </div>
+                        <div>
+                          <p className="text-red-700 font-medium mb-1">What you can&apos;t do:</p>
+                          <p className="text-red-600 pl-2">• Disable limits again until midnight</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Case 2: Disable (first time today)
+                if (!modeConfirmation?.enabled) {
+                  return (
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-left">
+                      <p className="text-amber-800 font-medium mb-2">
+                        Are you sure you want to disable all limits?
+                      </p>
+                      <ul className="text-amber-700 text-xs space-y-1 list-disc pl-4 mb-2">
+                        <li>Limits will remain disabled until you enable a mode again</li>
+                        <li>Your usage data is preserved (not reset)</li>
+                        <li>
+                          <strong>You can only disable once per day</strong>
+                        </li>
+                      </ul>
+                      <p className="text-amber-600 text-xs font-medium">
+                        This action will unlock again at midnight.
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Case 3: Switch modes
+                if (limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation?.mode) {
+                  return (
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-left">
+                      <p className="text-amber-800 font-medium mb-2">
+                        Switch to{' '}
+                        {modeConfirmation?.mode === 'video-count' && 'Video Count by Category'}
+                        {modeConfirmation?.mode === 'time-category' && 'Time Limit by Category'}
+                        {modeConfirmation?.mode === 'time-total' && 'Total Time-Based Limit'}?
+                      </p>
+                      <ul className="text-amber-700 text-xs space-y-1 list-disc pl-4">
+                        <li>
+                          <strong>Switching does not reset your usage</strong>
+                        </li>
+                        <li>Limits continue based on what you&apos;ve already watched today</li>
+                        <li>All modes share the same underlying usage data</li>
+                      </ul>
+                    </div>
+                  );
+                }
+
+                // Case 4: Enable (from disabled state)
+                return (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-left">
+                    <p className="text-blue-800 font-medium mb-2">
+                      Enable {modeConfirmation?.mode === 'video-count' && 'Video Count by Category'}
+                      {modeConfirmation?.mode === 'time-category' && 'Time Limit by Category'}
+                      {modeConfirmation?.mode === 'time-total' && 'Total Time-Based Limit'}?
+                    </p>
+                    <ul className="text-blue-700 text-xs space-y-1 list-disc pl-4 mb-2">
+                      <li>Limits will be enforced immediately</li>
+                      <li>Your existing usage from today still counts</li>
+                      <li>Limits reset at midnight</li>
+                    </ul>
+                    <p className="text-blue-600 text-xs font-medium">
+                      Heads-up: Disabling limits is allowed <strong>once per day</strong>. Switching
+                      modes is always allowed.
+                    </p>
+                  </div>
+                );
+              })()}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
-            <Button
-              onClick={confirmModeChange}
-              className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-9 text-sm"
-            >
-              {modeConfirmation?.enabled ? 'Enable Mode' : 'Disable Limits'}
-            </Button>
-            <Button variant="outline" onClick={cancelModeChange} className="h-9 text-sm">
-              Cancel
-            </Button>
+            {!modeConfirmation?.enabled && wasDisabledToday() ? (
+              <Button
+                onClick={cancelModeChange}
+                className="flex-1 bg-gray-500 hover:bg-gray-600 h-9 text-sm"
+              >
+                Got it
+              </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={confirmModeChange}
+                  className={`flex-1 h-9 text-sm ${
+                    modeConfirmation?.enabled
+                      ? 'bg-blue-500 hover:bg-blue-600'
+                      : 'bg-amber-500 hover:bg-amber-600'
+                  }`}
+                >
+                  {modeConfirmation?.enabled
+                    ? limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation?.mode
+                      ? 'Switch Mode'
+                      : 'Enable Limits'
+                    : 'Disable Limits'}
+                </Button>
+                <Button variant="outline" onClick={cancelModeChange} className="h-9 text-sm">
+                  Cancel
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -2476,40 +2631,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         </DialogContent>
       </Dialog>
 
-      {/* Category Toggle Confirmation Dialog */}
-      <Dialog
-        open={categoryToggleConfirmation?.isOpen || false}
-        onOpenChange={(open) => !open && cancelCategoryToggle()}
-      >
-        <DialogContent className="max-w-80 rounded-none gap-2">
-          <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <AlertCircle className="w-5 h-5 text-amber-500" />
-              Disable Category
-            </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              Are you sure you want to disable the category{' '}
-              <strong>&quot;{categoryToggleConfirmation?.categoryName}&quot;</strong>?
-              <span className="block mt-2 text-amber-600 font-medium">
-                This will remove its usage from your daily totals and stop tracking new activity for
-                this category.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-2 mt-2">
-            <Button
-              onClick={confirmCategoryToggle}
-              className="flex-1 bg-amber-500 hover:bg-amber-600 h-9 text-sm"
-            >
-              Disable Category
-            </Button>
-            <Button variant="outline" onClick={cancelCategoryToggle} className="h-9 text-sm">
-              Cancel
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Favorite Category Confirmation Dialog */}
       <Dialog
         open={favoriteConfirmation?.isOpen || false}
@@ -2646,24 +2767,50 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
             <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <Save className="w-5 h-5 text-purple-500" />
-              Save Time Limit
+              {isTotalTimeLimitLocked() ? (
+                <>
+                  <Lock className="w-5 h-5 text-amber-500" />
+                  Decrease Time Limit
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5 text-purple-500" />
+                  Save Time Limit
+                </>
+              )}
             </DialogTitle>
             <DialogDescription className="text-sm text-center">
-              Are you sure you want to change your daily time limit from{' '}
-              <strong>{formatTime(saveTimeLimitConfirmation?.currentLimit || 60)}</strong> to{' '}
-              <strong>{formatTime(saveTimeLimitConfirmation?.newLimit || 60)}</strong>?
-              <span className="block mt-2 text-purple-600 font-medium">
-                This will update your global YouTube time limit and apply immediately.
-              </span>
+              {isTotalTimeLimitLocked() ? (
+                <>
+                  Decrease your daily time limit from{' '}
+                  <strong>{formatTime(saveTimeLimitConfirmation?.currentLimit || 60)}</strong> to{' '}
+                  <strong>{formatTime(saveTimeLimitConfirmation?.newLimit || 60)}</strong>?
+                  <span className="block mt-2 text-amber-600 font-medium">
+                    Since the limit is locked, you can decrease but not increase until midnight.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Are you sure you want to change your daily time limit from{' '}
+                  <strong>{formatTime(saveTimeLimitConfirmation?.currentLimit || 60)}</strong> to{' '}
+                  <strong>{formatTime(saveTimeLimitConfirmation?.newLimit || 60)}</strong>?
+                  <span className="block mt-2 text-purple-600 font-medium">
+                    This will update your global YouTube time limit and apply immediately.
+                  </span>
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
             <Button
               onClick={confirmSaveTimeLimit}
-              className="flex-1 bg-purple-500 hover:bg-purple-600 active:bg-purple-700 h-9 text-sm"
+              className={`flex-1 h-9 text-sm ${
+                isTotalTimeLimitLocked()
+                  ? 'bg-amber-500 hover:bg-amber-600 active:bg-amber-700'
+                  : 'bg-purple-500 hover:bg-purple-600 active:bg-purple-700'
+              }`}
             >
-              Save Changes
+              {isTotalTimeLimitLocked() ? 'Decrease Limit' : 'Save Changes'}
             </Button>
             <Button variant="outline" onClick={cancelSaveTimeLimit} className="h-9 text-sm">
               Cancel

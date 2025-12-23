@@ -51,6 +51,9 @@ export interface LimitsSettings {
   totalDailyTimeLimit?: number;
   totalTimeWatchedToday?: number;
   favoriteCategories?: FavoriteCategory[];
+  lastDisabledAt?: string;
+  totalTimeModeActivatedAt?: string;
+  totalTimeWatchedAtActivation?: number;
 }
 
 export interface LimitsTabProps {
