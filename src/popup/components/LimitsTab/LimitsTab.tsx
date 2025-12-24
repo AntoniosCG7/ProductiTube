@@ -723,12 +723,27 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       }
 
       if (mode === 'video-count' || mode === 'time-category') {
+        const sourceModeCategories =
+          limitsSettings.categories[activeMode as 'video-count' | 'time-category'] || [];
+        const isSwitchingBetweenCategoryModes =
+          limitsSettings.isLimitsEnabled &&
+          (activeMode === 'video-count' || activeMode === 'time-category');
+
+        let categoriesToUse: VideoCategory[] = limitsSettings.categories[mode] || [];
+
+        if (isSwitchingBetweenCategoryModes) {
+          categoriesToUse = sourceModeCategories.map((cat: VideoCategory) => ({
+            ...cat,
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          }));
+        }
+
         updateLimitsSettings({
           activeMode: mode,
           isLimitsEnabled: true,
           categories: {
             ...limitsSettings.categories,
-            [mode]: [],
+            [mode]: categoriesToUse,
           },
         });
       } else if (mode === 'time-total') {
@@ -954,7 +969,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             originalVideoLimit = matchingCategory.dailyLimitCount;
           }
 
-          if (originalVideoLimit !== undefined && newCategory.dailyLimitCount > originalVideoLimit) {
+          if (
+            originalVideoLimit !== undefined &&
+            newCategory.dailyLimitCount > originalVideoLimit
+          ) {
             finalLimitCount = originalVideoLimit;
             restoredCategories.push({
               name: presetName,
@@ -1473,7 +1491,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                 )}
                               </div>
                               <div>
-                                <Label htmlFor="daily-time-limit-video-mode" className="mb-1 text-xs">
+                                <Label
+                                  htmlFor="daily-time-limit-video-mode"
+                                  className="mb-1 text-xs"
+                                >
                                   Daily Time Limit (minutes)
                                 </Label>
                                 <Input
@@ -1506,7 +1527,8 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                                   </p>
                                 ) : (
                                   <p className="text-[10px] text-gray-500 mt-1">
-                                    Applies if you switch to time-based mode ({formatTime(newCategory.dailyTimeLimit)})
+                                    Applies if you switch to time-based mode (
+                                    {formatTime(newCategory.dailyTimeLimit)})
                                   </p>
                                 )}
                               </div>
@@ -1580,13 +1602,13 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 </div>
                 <CardContent className="pt-2 pb-4 px-4 bg-gradient-to-b from-white to-gray-50/30">
                   {currentModeCategories.length === 0 ? (
-                    <div className="text-center py-8 px-4 bg-gradient-to-br from-gray-50/80 to-gray-100/60 rounded-xl border border-gray-200/50 backdrop-blur-sm">
+                    <div className="text-center py-8 px-4 bg-gradient-to-br from-amber-50/80 to-orange-50/60 rounded-xl border border-amber-200/50 backdrop-blur-sm">
                       <div className="p-3 bg-white/60 rounded-full w-fit mx-auto mb-3 shadow-sm">
-                        <Hash className="w-10 h-10 opacity-60 text-gray-400" />
+                        <Hash className="w-10 h-10 opacity-60 text-amber-400" />
                       </div>
-                      <p className="text-sm font-medium mb-1 text-gray-700">No categories yet</p>
-                      <p className="text-xs text-gray-500 mb-4">
-                        Add categories to manage your video limits
+                      <p className="text-sm font-medium mb-1 text-amber-800">No categories yet</p>
+                      <p className="text-xs text-amber-700 mb-4">
+                        Add at least one category to start enforcing limits
                       </p>
                       {hasFavorites && (
                         <Button
@@ -2317,6 +2339,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
                 // Case 3: Switch modes
                 if (limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation?.mode) {
+                  const isSwitchingBetweenCategoryModes =
+                    (activeMode === 'video-count' || activeMode === 'time-category') &&
+                    (modeConfirmation?.mode === 'video-count' ||
+                      modeConfirmation?.mode === 'time-category');
+                  const currentModeCategories =
+                    limitsSettings.categories[activeMode as 'video-count' | 'time-category'] || [];
+                  const hasCategoriesToSync =
+                    isSwitchingBetweenCategoryModes && currentModeCategories.length > 0;
+
                   return (
                     <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-left">
                       <p className="text-amber-800 font-medium mb-2">
@@ -2327,11 +2358,26 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       </p>
                       <ul className="text-amber-700 text-xs space-y-1 list-disc pl-4">
                         <li>
-                          <strong>Switching does not reset your usage</strong>
+                          <strong>Your limits will continue enforcing immediately</strong>
                         </li>
-                        <li>Limits continue based on what you&apos;ve already watched today</li>
-                        <li>All modes share the same underlying usage data</li>
+                        <li>Your usage today will not reset</li>
+
+                        {isSwitchingBetweenCategoryModes && (
+                          <li>Your categories and today&apos;s progress will carry over</li>
+                        )}
+
+                        {!isSwitchingBetweenCategoryModes && (
+                          <li>Previously watched time still counts toward today&apos;s limits</li>
+                        )}
                       </ul>
+
+                      {hasCategoriesToSync && (
+                        <p className="text-amber-700 text-xs mt-2">
+                          {currentModeCategories.length} categor
+                          {currentModeCategories.length === 1 ? 'y' : 'ies'} will sync to the new
+                          mode
+                        </p>
+                      )}
                     </div>
                   );
                 }
@@ -2555,7 +2601,8 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 </p>
               ) : (
                 <p className="text-[10px] text-gray-500 mt-1">
-                  Applies if you switch to time-based mode ({formatTime(newCategory.dailyTimeLimit)})
+                  Applies if you switch to time-based mode ({formatTime(newCategory.dailyTimeLimit)}
+                  )
                 </p>
               )}
             </div>
