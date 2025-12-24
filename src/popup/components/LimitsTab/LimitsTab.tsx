@@ -1587,12 +1587,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 </div>
                 <CardContent className="pt-2 pb-4 px-4 bg-gradient-to-b from-white to-gray-50/30">
                   {currentModeCategories.length === 0 ? (
-                    <div className="text-center py-8 px-4 bg-gradient-to-br from-amber-50/80 to-orange-50/60 rounded-xl border border-amber-200/50 backdrop-blur-sm">
-                      <div className="p-3 bg-white/60 rounded-full w-fit mx-auto mb-3 shadow-sm">
-                        <Hash className="w-10 h-10 opacity-60 text-amber-400" />
+                    <div className="text-center py-8 px-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <div className="p-3 bg-white rounded-full w-fit mx-auto mb-3 shadow-sm">
+                        <Hash className="w-10 h-10 text-green-500" />
                       </div>
-                      <p className="text-sm font-medium mb-1 text-amber-800">No categories yet</p>
-                      <p className="text-xs text-amber-700 mb-4">
+                      <p className="text-sm font-medium mb-1 text-gray-700">No categories yet</p>
+                      <p className="text-xs text-gray-500 mb-4">
                         Add at least one category to start enforcing limits
                       </p>
                       {hasFavorites && (
@@ -1600,7 +1600,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                           variant="outline"
                           size="sm"
                           onClick={handleLoadFavorites}
-                          className="h-8 px-3 text-xs bg-gradient-to-r from-amber-50 to-yellow-50 backdrop-blur-sm border-amber-200 hover:bg-gradient-to-r hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
+                          className="h-8 px-3 text-xs"
                         >
                           <Zap className="w-3 h-3 mr-1.5" />
                           Load Your Favorites
@@ -1979,22 +1979,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 </div>
                 <CardContent className="pt-2 pb-4 px-4 bg-gradient-to-b from-white to-gray-50/30">
                   {currentModeCategories.length === 0 ? (
-                    <div className="text-center py-8 px-4 bg-gradient-to-br from-gray-50/80 to-gray-100/60 rounded-xl border border-gray-200/50 backdrop-blur-sm">
-                      <div className="p-3 bg-white/60 rounded-full w-fit mx-auto mb-3 shadow-sm">
-                        <Hourglass className="w-10 h-10 opacity-60 text-gray-400" />
+                    <div className="text-center py-8 px-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <div className="p-3 bg-white rounded-full w-fit mx-auto mb-3 shadow-sm">
+                        <Hourglass className="w-10 h-10 text-blue-500" />
                       </div>
-                      <p className="text-sm font-medium mb-1 text-gray-700">
-                        No time categories created yet
-                      </p>
+                      <p className="text-sm font-medium mb-1 text-gray-700">No categories yet</p>
                       <p className="text-xs text-gray-500 mb-4">
-                        Add categories to start managing your time limits
+                        Add at least one category to start enforcing limits
                       </p>
                       {hasFavorites && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handleLoadFavorites}
-                          className="h-8 px-3 text-xs bg-gradient-to-r from-amber-50 to-yellow-50 backdrop-blur-sm border-amber-200 hover:bg-gradient-to-r hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 hover:shadow-md transition-all duration-200 ml-3 flex-shrink-0"
+                          className="h-8 px-3 text-xs"
                         >
                           <Zap className="w-3 h-3 mr-1.5" />
                           Load Your Favorites
