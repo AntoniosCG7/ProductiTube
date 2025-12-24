@@ -65,7 +65,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     name: '',
     color: '#10b981',
     dailyLimitCount: 5,
-    dailyTimeLimit: 60,
+    dailyTimeLimit: 50,
   });
   const [totalTimeLimit, setTotalTimeLimit] = useState(limitsSettings.totalDailyTimeLimit || 60);
   const totalTimeWatched = limitsSettings.totalTimeWatchedToday || 0;
@@ -251,7 +251,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       name: '',
       color: '#10b981',
       dailyLimitCount: 5,
-      dailyTimeLimit: 60,
+      dailyTimeLimit: 50,
     });
     clearValidationErrors();
   };
@@ -522,15 +522,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     return isFullyConfigured && hasUsage;
   };
 
-  const isLimitIncrease = (category: VideoCategory, newLimit: number, mode: LimitMode): boolean => {
-    if (mode === 'video-count') {
-      return newLimit > (category.dailyLimitCount || 5);
-    } else if (mode === 'time-category') {
-      return newLimit > (category.dailyTimeLimit || 60);
-    }
-    return false;
-  };
-
   const checkUsageDataForCategory = async (
     categoryName: string
   ): Promise<{
@@ -606,34 +597,16 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       }
     }
 
-    if (editingCategory && isCategoryLocked(editingCategory)) {
-      if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
-        errors.dailyLimitCount = 'Daily limit must be at least 1 video';
-      } else if (newCategory.dailyLimitCount > 100) {
-        errors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
-      } else if (isLimitIncrease(editingCategory, newCategory.dailyLimitCount, 'video-count')) {
-        errors.dailyLimitCount = `Can't increase — category was used today. Resets at midnight.`;
-      }
+    if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
+      errors.dailyLimitCount = 'Daily limit must be at least 1 video';
+    } else if (newCategory.dailyLimitCount > 100) {
+      errors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
+    }
 
-      if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
-        errors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
-      } else if (newCategory.dailyTimeLimit > 480) {
-        errors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
-      } else if (isLimitIncrease(editingCategory, newCategory.dailyTimeLimit, 'time-category')) {
-        errors.dailyTimeLimit = `Can't increase — category was used today. Resets at midnight.`;
-      }
-    } else {
-      if (!newCategory.dailyLimitCount || newCategory.dailyLimitCount < 1) {
-        errors.dailyLimitCount = 'Daily limit must be at least 1 video';
-      } else if (newCategory.dailyLimitCount > 100) {
-        errors.dailyLimitCount = 'Daily limit cannot exceed 100 videos';
-      }
-
-      if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
-        errors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
-      } else if (newCategory.dailyTimeLimit > 480) {
-        errors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
-      }
+    if (!newCategory.dailyTimeLimit || newCategory.dailyTimeLimit < 5) {
+      errors.dailyTimeLimit = 'Time limit must be at least 5 minutes';
+    } else if (newCategory.dailyTimeLimit > 480) {
+      errors.dailyTimeLimit = 'Time limit cannot exceed 480 minutes (8 hours)';
     }
 
     setValidationErrors(errors);
@@ -1015,7 +988,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       name: '',
       color: '#10b981',
       dailyLimitCount: 5,
-      dailyTimeLimit: 60,
+      dailyTimeLimit: 50,
     });
     setSelectedPresets([]);
     clearValidationErrors();
@@ -1065,7 +1038,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       name: '',
       color: '#10b981',
       dailyLimitCount: 5,
-      dailyTimeLimit: 60,
+      dailyTimeLimit: 50,
     });
     clearValidationErrors();
   };
@@ -1393,28 +1366,62 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                             <DialogHeader>
                               <DialogTitle className="text-base">Add Category</DialogTitle>
                               <DialogDescription className="text-xs">
-                                Create a new video category to limit your YouTube watching.
+                                Create a category to control how you watch YouTube.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
                               {/* Info Banner - Rules for categories */}
                               <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs">
-                                <div className="flex items-start gap-2">
-                                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <p className="font-medium text-blue-800 mb-1">
-                                      How category limits work
-                                    </p>
-                                    <ul className="text-blue-700 space-y-0.5 list-disc pl-4">
-                                      <li>Set both time and video limits before watching</li>
-                                      <li>Limits lock after you start watching</li>
-                                      <li>Locked limits apply across all category modes</li>
-                                      <li>You can always lower limits, never increase</li>
-                                      <li>Category names can&apos;t be changed after use</li>
-                                      <li>Everything resets at midnight</li>
-                                    </ul>
-                                  </div>
-                                </div>
+                                <p className="font-medium text-blue-800 mb-2">
+                                  How category limits work
+                                </p>
+
+                                <ul className="space-y-2 text-blue-700 list-disc pl-4">
+                                  <li>
+                                    <span className="font-medium text-blue-800">
+                                      Set both limits before watching.
+                                    </span>
+                                    <div className="text-blue-600">
+                                      Once you start, limits lock for today.
+                                    </div>
+                                  </li>
+
+                                  <li>
+                                    <span className="font-medium text-blue-800">
+                                      Limits lock after first use.
+                                    </span>
+                                    <div className="text-blue-600">
+                                      Locks apply across all category-based modes.
+                                    </div>
+                                  </li>
+
+                                  <li>
+                                    <span className="font-medium text-blue-800">
+                                      You can always make limits stricter.
+                                    </span>
+                                    <div className="text-blue-600">
+                                      Decreasing is allowed. Increasing is not.
+                                    </div>
+                                  </li>
+
+                                  <li>
+                                    <span className="font-medium text-blue-800">
+                                      Category names lock after use.
+                                    </span>
+                                    <div className="text-blue-600">
+                                      This keeps usage tracking accurate.
+                                    </div>
+                                  </li>
+
+                                  <li>
+                                    <span className="font-medium text-blue-800">
+                                      Everything resets at midnight.
+                                    </span>
+                                    <div className="text-blue-600">
+                                      Usage and locks refresh automatically each day.
+                                    </div>
+                                  </li>
+                                </ul>
                               </div>
 
                               <Label htmlFor="category-name" className="mb-1 text-xs">
@@ -1786,31 +1793,64 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
                         <DialogContent className="max-w-80 max-h-[80vh] overflow-y-auto rounded-none">
                           <DialogHeader>
-                            <DialogTitle className="text-base">Add New Time Category</DialogTitle>
+                            <DialogTitle className="text-base">Add Category</DialogTitle>
                             <DialogDescription className="text-xs">
-                              Create a new category with time-based limits for your YouTube
-                              watching.
+                              Create a category to control how you watch YouTube.
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
                             {/* Info Banner - Rules for categories */}
                             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs">
-                              <div className="flex items-start gap-2">
-                                <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                                <div className="flex-1">
-                                  <p className="font-medium text-blue-800 mb-1">
-                                    How category limits work
-                                  </p>
-                                  <ul className="text-blue-700 space-y-0.5 list-disc pl-4">
-                                    <li>Set both time and video limits before watching</li>
-                                    <li>Limits lock after you start watching</li>
-                                    <li>Locked limits apply across all category modes</li>
-                                    <li>You can always lower limits, never increase</li>
-                                    <li>Category names can&apos;t be changed after use</li>
-                                    <li>Everything resets at midnight</li>
-                                  </ul>
-                                </div>
-                              </div>
+                              <p className="font-medium text-blue-800 mb-2">
+                                How category limits work
+                              </p>
+
+                              <ul className="space-y-2 text-blue-700 list-disc pl-4">
+                                <li>
+                                  <span className="font-medium text-blue-800">
+                                    Set both limits before watching.
+                                  </span>
+                                  <div className="text-blue-600">
+                                    Once you start, limits lock for today.
+                                  </div>
+                                </li>
+
+                                <li>
+                                  <span className="font-medium text-blue-800">
+                                    Limits lock after first use.
+                                  </span>
+                                  <div className="text-blue-600">
+                                    Locks apply across all category-based modes.
+                                  </div>
+                                </li>
+
+                                <li>
+                                  <span className="font-medium text-blue-800">
+                                    You can always make limits stricter.
+                                  </span>
+                                  <div className="text-blue-600">
+                                    Decreasing is allowed. Increasing is not.
+                                  </div>
+                                </li>
+
+                                <li>
+                                  <span className="font-medium text-blue-800">
+                                    Category names lock after use.
+                                  </span>
+                                  <div className="text-blue-600">
+                                    This keeps usage tracking accurate.
+                                  </div>
+                                </li>
+
+                                <li>
+                                  <span className="font-medium text-blue-800">
+                                    Everything resets at midnight.
+                                  </span>
+                                  <div className="text-blue-600">
+                                    Usage and locks refresh automatically each day.
+                                  </div>
+                                </li>
+                              </ul>
                             </div>
 
                             <Label htmlFor="category-name" className="mb-1 text-xs">
@@ -2385,23 +2425,20 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
           <div className="space-y-4">
             {/* Info Banner - Show when category is not locked yet */}
             {editingCategory && !isCategoryLocked(editingCategory) && (
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 text-xs">
-                <p className="text-gray-600">
-                  <span className="font-medium text-gray-700">Limits lock after first use.</span>{' '}
-                  You can always decrease limits later.
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs">
+                <p className="text-blue-800 font-medium">Limits lock after first use.</p>
+                <p className="text-blue-700 mt-1">
+                  Once you watch in this category, you can only decrease limits until midnight.
                 </p>
               </div>
             )}
 
             {/* Locked Indicator - Show when category is locked */}
             {editingCategory && isCategoryLocked(editingCategory) && (
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 text-xs">
-                <p className="text-gray-600">
-                  <span className="font-medium text-gray-700">Limits are locked.</span> Used today (
-                  {activeMode === 'video-count'
-                    ? `${editingCategory.videosWatchedToday || 0} video${(editingCategory.videosWatchedToday || 0) !== 1 ? 's' : ''}`
-                    : formatTime(editingCategory.timeWatchedToday || 0)}
-                  ). You can decrease limits. Resets at midnight.
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs">
+                <p className="text-amber-800 font-medium">Limits are locked for today.</p>
+                <p className="text-amber-700 mt-1">
+                  You can decrease limits but not increase them. Resets at midnight.
                 </p>
               </div>
             )}
@@ -2450,10 +2487,17 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   id="edit-daily-limit"
                   type="number"
                   min="1"
-                  max="100"
+                  max={
+                    editingCategory && isCategoryLocked(editingCategory)
+                      ? editingCategory.dailyLimitCount
+                      : 100
+                  }
                   value={newCategory.dailyLimitCount}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const newValue = Number.parseInt(e.target.value) || 5;
+                    let newValue = Number.parseInt(e.target.value) || 5;
+                    if (editingCategory && isCategoryLocked(editingCategory)) {
+                      newValue = Math.min(newValue, editingCategory.dailyLimitCount);
+                    }
                     setNewCategory({
                       ...newCategory,
                       dailyLimitCount: newValue,
@@ -2462,18 +2506,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       setValidationErrors({ ...validationErrors, dailyLimitCount: undefined });
                     }
                   }}
-                  className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                    validationErrors.dailyLimitCount ? 'border-red-500 ring-1 ring-red-500' : ''
-                  }`}
+                  className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
                 />
               </div>
-              {validationErrors.dailyLimitCount ? (
-                <p className="text-xs text-red-500 mt-1">{validationErrors.dailyLimitCount}</p>
-              ) : editingCategory && isCategoryLocked(editingCategory) ? (
-                <p className="text-[10px] text-gray-500 mt-1">
-                  Locked at {editingCategory.dailyLimitCount} videos — can only decrease
-                </p>
-              ) : activeMode === 'video-count' ? (
+              {activeMode === 'video-count' ? (
                 <p className="text-[10px] text-gray-500 mt-1">Maximum number of videos per day</p>
               ) : (
                 <p className="text-[10px] text-gray-500 mt-1">
@@ -2491,10 +2527,17 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                   id="edit-daily-time-limit"
                   type="number"
                   min="5"
-                  max="480"
+                  max={
+                    editingCategory && isCategoryLocked(editingCategory)
+                      ? editingCategory.dailyTimeLimit || 60
+                      : 480
+                  }
                   value={newCategory.dailyTimeLimit}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const newValue = Number.parseInt(e.target.value) || 60;
+                    let newValue = Number.parseInt(e.target.value) || 50;
+                    if (editingCategory && isCategoryLocked(editingCategory)) {
+                      newValue = Math.min(newValue, editingCategory.dailyTimeLimit || 60);
+                    }
                     setNewCategory({
                       ...newCategory,
                       dailyTimeLimit: newValue,
@@ -2503,18 +2546,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                       setValidationErrors({ ...validationErrors, dailyTimeLimit: undefined });
                     }
                   }}
-                  className={`focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8 ${
-                    validationErrors.dailyTimeLimit ? 'border-red-500 ring-1 ring-red-500' : ''
-                  }`}
+                  className="focus-visible:ring-red-500 focus-visible:border-red-500 focus-visible:ring-[1.5px] text-sm h-8"
                 />
               </div>
-              {validationErrors.dailyTimeLimit ? (
-                <p className="text-xs text-red-500 mt-1">{validationErrors.dailyTimeLimit}</p>
-              ) : editingCategory && isCategoryLocked(editingCategory) ? (
-                <p className="text-[10px] text-gray-500 mt-1">
-                  Locked at {formatTime(editingCategory.dailyTimeLimit || 60)} — can only decrease
-                </p>
-              ) : activeMode === 'time-category' ? (
+              {activeMode === 'time-category' ? (
                 <p className="text-[10px] text-gray-500 mt-1">
                   Maximum watch time per day ({formatTime(newCategory.dailyTimeLimit)})
                 </p>
@@ -2535,7 +2570,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             <div className="flex gap-2">
               <Button
                 onClick={handleUpdateCategory}
-                className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
+                className="flex-1 bg-amber-500 hover:bg-amber-600 h-8 text-xs"
               >
                 Update Category
               </Button>
@@ -2642,9 +2677,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                     <p className="text-gray-900 font-medium">
                       This only removes it from favorites.
                     </p>
-                    <p className="text-gray-600 text-xs">
-                      Your active category is not affected.
-                    </p>
+                    <p className="text-gray-600 text-xs">Your active category is not affected.</p>
                   </>
                 )}
               </div>
