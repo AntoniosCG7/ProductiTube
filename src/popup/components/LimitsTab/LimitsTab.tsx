@@ -531,21 +531,6 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     return false;
   };
 
-  const getTimeUntilMidnight = (): string => {
-    const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0);
-
-    const totalMs = midnight.getTime() - now.getTime();
-    const hours = Math.floor(totalMs / (1000 * 60 * 60));
-    const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
-  };
-
   const checkUsageDataForCategory = async (
     categoryName: string
   ): Promise<{
@@ -2272,46 +2257,28 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              {!modeConfirmation?.enabled && wasDisabledToday() ? (
-                <>
-                  <Lock className="w-5 h-5 text-red-500" />
-                  Disable Not Available
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-5 h-5 text-amber-500" />
-                  {modeConfirmation?.enabled
-                    ? limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation?.mode
-                      ? 'Switch Limit Mode'
-                      : 'Enable Limits'
-                    : 'Disable Limits'}
-                </>
-              )}
+            <DialogTitle className="text-base text-center">
+              {!modeConfirmation?.enabled && wasDisabledToday()
+                ? 'Disable Not Available'
+                : modeConfirmation?.enabled
+                  ? limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation?.mode
+                    ? 'Switch Limit Mode?'
+                    : 'Enable Limits?'
+                  : 'Disable Limits?'}
             </DialogTitle>
             <DialogDescription className="text-sm">
               {(() => {
                 // Case 1: Blocked - already disabled today
                 if (!modeConfirmation?.enabled && wasDisabledToday()) {
                   return (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3 text-left">
-                      <p className="text-red-800 font-medium mb-3">
-                        Limits were already disabled today.
+                    <div className="text-center space-y-3">
+                      <p className="text-gray-900 font-medium">
+                        Limits were already disabled once today.
                       </p>
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <p className="text-gray-700 font-medium mb-1">What you can do:</p>
-                          <p className="text-gray-600 pl-2">
-                            • Switch to another limit mode at any time
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-700 font-medium mb-1">What you can&apos;t do:</p>
-                          <p className="text-gray-600 pl-2">
-                            • Disable limits again until midnight
-                          </p>
-                        </div>
-                      </div>
+                      <ul className="text-gray-600 text-xs space-y-1 text-left">
+                        <li>• You can switch to another limit mode anytime</li>
+                        <li>• Disabling unlocks again at midnight</li>
+                      </ul>
                     </div>
                   );
                 }
@@ -2319,20 +2286,15 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 // Case 2: Disable (first time today)
                 if (!modeConfirmation?.enabled) {
                   return (
-                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-left">
-                      <p className="text-amber-800 font-medium mb-2">
-                        Are you sure you want to disable all limits?
+                    <div className="text-center space-y-3">
+                      <p className="text-gray-900 font-medium">
+                        Disabling is allowed once per day.
                       </p>
-                      <ul className="text-amber-700 text-xs space-y-1 list-disc pl-4 mb-2">
-                        <li>Limits will remain disabled until you enable a mode again</li>
-                        <li>Your usage data is preserved (not reset)</li>
-                        <li>
-                          <strong>You can only disable once per day</strong>
-                        </li>
+                      <ul className="text-gray-600 text-xs space-y-1 text-left">
+                        <li>• Your usage data is preserved</li>
+                        <li>• You can re-enable or switch modes anytime</li>
+                        <li>• This action unlocks again at midnight</li>
                       </ul>
-                      <p className="text-amber-600 text-xs font-medium">
-                        This action will unlock again at midnight.
-                      </p>
                     </div>
                   );
                 }
@@ -2349,33 +2311,21 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                     isSwitchingBetweenCategoryModes && currentModeCategories.length > 0;
 
                   return (
-                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-left">
-                      <p className="text-amber-800 font-medium mb-2">
-                        Switch to{' '}
-                        {modeConfirmation?.mode === 'video-count' && 'Video Count by Category'}
-                        {modeConfirmation?.mode === 'time-category' && 'Time Limit by Category'}
-                        {modeConfirmation?.mode === 'time-total' && 'Total Time-Based Limit'}?
-                      </p>
-                      <ul className="text-amber-700 text-xs space-y-1 list-disc pl-4">
-                        <li>
-                          <strong>Your limits will continue enforcing immediately</strong>
-                        </li>
-                        <li>Your usage today will not reset</li>
-
+                    <div className="text-center space-y-3">
+                      <p className="text-gray-900 font-medium">Your usage does not reset.</p>
+                      <ul className="text-gray-600 text-xs space-y-1 text-left">
+                        <li>• Limits continue enforcing immediately</li>
                         {isSwitchingBetweenCategoryModes && (
-                          <li>Your categories and today&apos;s progress will carry over</li>
+                          <li>• Categories and progress carry over</li>
                         )}
-
                         {!isSwitchingBetweenCategoryModes && (
-                          <li>Previously watched time still counts toward today&apos;s limits</li>
+                          <li>• Previously watched time counts toward new limits</li>
                         )}
                       </ul>
-
                       {hasCategoriesToSync && (
-                        <p className="text-amber-700 text-xs mt-2">
+                        <p className="text-gray-500 text-xs">
                           {currentModeCategories.length} categor
-                          {currentModeCategories.length === 1 ? 'y' : 'ies'} will sync to the new
-                          mode
+                          {currentModeCategories.length === 1 ? 'y' : 'ies'} will sync
                         </p>
                       )}
                     </div>
@@ -2384,21 +2334,13 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
                 // Case 4: Enable (from disabled state)
                 return (
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-left">
-                    <p className="text-blue-800 font-medium mb-2">
-                      Enable {modeConfirmation?.mode === 'video-count' && 'Video Count by Category'}
-                      {modeConfirmation?.mode === 'time-category' && 'Time Limit by Category'}
-                      {modeConfirmation?.mode === 'time-total' && 'Total Time-Based Limit'}?
-                    </p>
-                    <ul className="text-blue-700 text-xs space-y-1 list-disc pl-4 mb-2">
-                      <li>Limits will be enforced immediately</li>
-                      <li>Your existing usage from today still counts</li>
-                      <li>Limits reset at midnight</li>
+                  <div className="text-center space-y-3">
+                    <p className="text-gray-900 font-medium">Limits enforce immediately.</p>
+                    <ul className="text-gray-600 text-xs space-y-1 text-left">
+                      <li>• Your existing usage from today still counts</li>
+                      <li>• All modes share today&apos;s usage</li>
+                      <li>• Limits reset at midnight</li>
                     </ul>
-                    <p className="text-blue-600 text-xs font-medium">
-                      Heads-up: Disabling limits is allowed <strong>once per day</strong>. Switching
-                      modes is always allowed.
-                    </p>
                   </div>
                 );
               })()}
@@ -2410,17 +2352,13 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
                 onClick={cancelModeChange}
                 className="flex-1 bg-gray-500 hover:bg-gray-600 h-9 text-sm"
               >
-                Got it
+                Got It
               </Button>
             ) : (
               <>
                 <Button
                   onClick={confirmModeChange}
-                  className={`flex-1 h-9 text-sm ${
-                    modeConfirmation?.enabled
-                      ? 'bg-blue-500 hover:bg-blue-600'
-                      : 'bg-amber-500 hover:bg-amber-600'
-                  }`}
+                  className="flex-1 h-9 text-sm bg-amber-500 hover:bg-amber-600"
                 >
                   {modeConfirmation?.enabled
                     ? limitsSettings.isLimitsEnabled && activeMode !== modeConfirmation?.mode
@@ -2447,43 +2385,26 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Warning Banner - Show when category is not locked yet */}
+            {/* Info Banner - Show when category is not locked yet */}
             {editingCategory && !isCategoryLocked(editingCategory) && (
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium text-amber-800 mb-1">Limits lock after first use</p>
-                    <p className="text-amber-700">
-                      Once you start watching in this category today, you won&apos;t be able to
-                      increase these limits until midnight. You can always decrease them or edit
-                      other settings.
-                    </p>
-                  </div>
-                </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 text-xs">
+                <p className="text-gray-600">
+                  <span className="font-medium text-gray-700">Limits lock after first use.</span>{' '}
+                  You can always decrease limits later.
+                </p>
               </div>
             )}
 
             {/* Locked Indicator - Show when category is locked */}
             {editingCategory && isCategoryLocked(editingCategory) && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 text-xs">
-                <div className="flex items-start gap-2">
-                  <Lock className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium text-red-800 mb-1">Limit Increase Not Allowed</p>
-                    <p className="text-red-700 mb-2">
-                      This category was used today (
-                      {activeMode === 'video-count'
-                        ? `${editingCategory.videosWatchedToday || 0} video${(editingCategory.videosWatchedToday || 0) !== 1 ? 's' : ''}`
-                        : formatTime(editingCategory.timeWatchedToday || 0)}
-                      ), so its limit can&apos;t be increased.
-                    </p>
-                    <p className="text-red-600">
-                      You can still lower the limit or edit other settings. Resets at midnight (
-                      {getTimeUntilMidnight()}).
-                    </p>
-                  </div>
-                </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 text-xs">
+                <p className="text-gray-600">
+                  <span className="font-medium text-gray-700">Limits are locked.</span> Used today (
+                  {activeMode === 'video-count'
+                    ? `${editingCategory.videosWatchedToday || 0} video${(editingCategory.videosWatchedToday || 0) !== 1 ? 's' : ''}`
+                    : formatTime(editingCategory.timeWatchedToday || 0)}
+                  ). You can decrease limits. Resets at midnight.
+                </p>
               </div>
             )}
             <div>
@@ -2639,17 +2560,16 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-              Delete Category
+            <DialogTitle className="text-base text-center">
+              Delete &quot;{deleteConfirmation?.categoryName}&quot;?
             </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              Are you sure you want to delete the category{' '}
-              <strong>&quot;{deleteConfirmation?.categoryName}&quot;</strong>?
-              <span className="block mt-2 text-muted-foreground">
-                Your watch progress will be preserved. If you add a category with the same name
-                later, your usage will be restored.
-              </span>
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">Your usage data is preserved.</p>
+                <p className="text-gray-600 text-xs">
+                  If you add a category with the same name later, your progress will be restored.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
@@ -2673,22 +2593,22 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <AlertCircle className="w-5 h-5 text-amber-500" />
-              At Least One Category Required
-            </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              You can&apos;t remove the last category while a category-based limit mode is active.
-              <span className="block mt-2 text-gray-600">
-                Add another category first, or disable the limit mode.
-              </span>
+            <DialogTitle className="text-base text-center">One Category Required</DialogTitle>
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">
+                  Category-based modes require at least one category.
+                </p>
+                <p className="text-gray-600 text-xs">
+                  Add another category first, or switch to a different mode.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
             <Button
-              variant="outline"
               onClick={() => setLastCategoryBlockedDialog(false)}
-              className="flex-1 h-9 text-sm"
+              className="flex-1 h-9 text-sm bg-gray-500 hover:bg-gray-600"
             >
               Got It
             </Button>
@@ -2703,47 +2623,41 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <Star className="w-5 h-5 text-amber-500" />
+            <DialogTitle className="text-base text-center">
               {favoriteConfirmation?.action === 'add'
-                ? 'Add to Favorites'
-                : 'Remove from Favorites'}
+                ? `Save "${favoriteConfirmation?.category?.name}" to Favorites?`
+                : `Remove "${favoriteConfirmation?.category?.name}" from Favorites?`}
             </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              {favoriteConfirmation?.action === 'add' ? (
-                <>
-                  Are you sure you want to add{' '}
-                  <strong>&quot;{favoriteConfirmation?.category?.name}&quot;</strong> to your
-                  favorites?
-                  <span className="block mt-2 text-blue-600 font-medium">
-                    This will save the category with its current limit settings for quick access
-                    later.
-                  </span>
-                </>
-              ) : (
-                <>
-                  Are you sure you want to remove{' '}
-                  <strong>&quot;{favoriteConfirmation?.category?.name}&quot;</strong> from your
-                  favorites?
-                  <span className="block mt-2 text-amber-600 font-medium">
-                    You can always add it back to favorites later if needed.
-                  </span>
-                </>
-              )}
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                {favoriteConfirmation?.action === 'add' ? (
+                  <>
+                    <p className="text-gray-900 font-medium">
+                      Current limit settings will be saved.
+                    </p>
+                    <p className="text-gray-600 text-xs">
+                      Load this category later for quick setup.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-900 font-medium">
+                      This only removes it from favorites.
+                    </p>
+                    <p className="text-gray-600 text-xs">
+                      Your active category is not affected.
+                    </p>
+                  </>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
             <Button
               onClick={confirmFavoriteAction}
-              className={`flex-1 h-9 text-sm ${
-                favoriteConfirmation?.action === 'add'
-                  ? 'bg-blue-500 hover:bg-blue-600'
-                  : 'bg-amber-500 hover:bg-amber-600'
-              }`}
+              className="flex-1 h-9 text-sm bg-amber-500 hover:bg-amber-600"
             >
-              {favoriteConfirmation?.action === 'add'
-                ? 'Add to Favorites'
-                : 'Remove from Favorites'}
+              {favoriteConfirmation?.action === 'add' ? 'Save to Favorites' : 'Remove'}
             </Button>
             <Button variant="outline" onClick={cancelFavoriteAction} className="h-9 text-sm">
               Cancel
@@ -2759,61 +2673,46 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <Zap className="w-5 h-5 text-amber-500" />
-              Load Favorite Categories
-            </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              {loadFavoritesConfirmation?.existingCount === 0 ? (
-                <>
-                  Are you sure you want to load{' '}
-                  <strong>
-                    {loadFavoritesConfirmation?.favoritesToAdd.length} favorite categories
-                  </strong>
-                  ?
-                  <span className="block mt-2 text-blue-600 font-medium">
-                    These categories will be added to your current setup.
-                  </span>
-                </>
-              ) : (
-                <>
-                  Are you sure you want to load{' '}
-                  <strong>
-                    {loadFavoritesConfirmation?.favoritesToAdd.length} favorite categories
-                  </strong>
-                  ?
-                  <span className="block mt-2 text-blue-600 font-medium">
-                    These will be added to your existing {loadFavoritesConfirmation?.existingCount}{' '}
-                    categories. Duplicates will be skipped automatically.
-                  </span>
-                </>
-              )}
-              {loadFavoritesConfirmation?.favoritesToAdd &&
-                loadFavoritesConfirmation.favoritesToAdd.length > 0 && (
-                  <div className="mt-3 p-2 bg-gray-50 rounded border">
-                    <div className="text-xs text-gray-600 mb-1">Categories to add:</div>
-                    <div className="flex flex-wrap gap-1">
-                      {loadFavoritesConfirmation.favoritesToAdd.map((fav, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs"
-                        >
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: fav.color }}
-                          />
-                          {fav.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+            <DialogTitle className="text-base text-center">Load Favorite Categories?</DialogTitle>
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">
+                  {loadFavoritesConfirmation?.favoritesToAdd.length} categor
+                  {(loadFavoritesConfirmation?.favoritesToAdd.length || 0) === 1 ? 'y' : 'ies'} will
+                  be added.
+                </p>
+                {(loadFavoritesConfirmation?.existingCount || 0) > 0 && (
+                  <p className="text-gray-600 text-xs">
+                    Added to your existing {loadFavoritesConfirmation?.existingCount} categories.
+                    Duplicates are skipped.
+                  </p>
                 )}
+                {loadFavoritesConfirmation?.favoritesToAdd &&
+                  loadFavoritesConfirmation.favoritesToAdd.length > 0 && (
+                    <div className="p-2 bg-gray-50 rounded border">
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {loadFavoritesConfirmation.favoritesToAdd.map((fav, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs"
+                          >
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: fav.color }}
+                            />
+                            {fav.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
             <Button
               onClick={confirmLoadFavorites}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 h-9 text-sm"
+              className="flex-1 bg-amber-500 hover:bg-amber-600 h-9 text-sm"
             >
               Load Categories
             </Button>
@@ -2831,51 +2730,31 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              {isTotalTimeLimitLocked() ? (
-                <>
-                  <Lock className="w-5 h-5 text-amber-500" />
-                  Decrease Time Limit
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5 text-purple-500" />
-                  Save Time Limit
-                </>
-              )}
+            <DialogTitle className="text-base text-center">
+              {isTotalTimeLimitLocked() ? 'Decrease Time Limit?' : 'Update Time Limit?'}
             </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              {isTotalTimeLimitLocked() ? (
-                <>
-                  Decrease your daily time limit from{' '}
-                  <strong>{formatTime(saveTimeLimitConfirmation?.currentLimit || 60)}</strong> to{' '}
-                  <strong>{formatTime(saveTimeLimitConfirmation?.newLimit || 60)}</strong>?
-                  <span className="block mt-2 text-amber-600 font-medium">
-                    Since the limit is locked, you can decrease but not increase until midnight.
-                  </span>
-                </>
-              ) : (
-                <>
-                  Are you sure you want to change your daily time limit from{' '}
-                  <strong>{formatTime(saveTimeLimitConfirmation?.currentLimit || 60)}</strong> to{' '}
-                  <strong>{formatTime(saveTimeLimitConfirmation?.newLimit || 60)}</strong>?
-                  <span className="block mt-2 text-purple-600 font-medium">
-                    This will update your global YouTube time limit and apply immediately.
-                  </span>
-                </>
-              )}
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">
+                  {formatTime(saveTimeLimitConfirmation?.currentLimit || 60)} →{' '}
+                  {formatTime(saveTimeLimitConfirmation?.newLimit || 60)}
+                </p>
+                {isTotalTimeLimitLocked() ? (
+                  <p className="text-gray-600 text-xs">
+                    Limit is locked. You can decrease but not increase until midnight.
+                  </p>
+                ) : (
+                  <p className="text-gray-600 text-xs">This change applies immediately.</p>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
             <Button
               onClick={confirmSaveTimeLimit}
-              className={`flex-1 h-9 text-sm ${
-                isTotalTimeLimitLocked()
-                  ? 'bg-amber-500 hover:bg-amber-600 active:bg-amber-700'
-                  : 'bg-purple-500 hover:bg-purple-600 active:bg-purple-700'
-              }`}
+              className="flex-1 h-9 text-sm bg-amber-500 hover:bg-amber-600"
             >
-              {isTotalTimeLimitLocked() ? 'Decrease Limit' : 'Save Changes'}
+              {isTotalTimeLimitLocked() ? 'Decrease Limit' : 'Update Limit'}
             </Button>
             <Button variant="outline" onClick={cancelSaveTimeLimit} className="h-9 text-sm">
               Cancel
@@ -2986,7 +2865,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
             <div className="flex gap-2">
               <Button
                 onClick={handleUpdateFavorite}
-                className="flex-1 bg-red-500 hover:bg-red-600 active:bg-red-700 h-8 text-xs text-white font-medium shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
+                className="flex-1 bg-amber-500 hover:bg-amber-600 h-8 text-xs"
               >
                 Update Favorite
               </Button>
@@ -3009,17 +2888,16 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <AlertCircle className="w-5 h-5 text-red-500" />
-              Delete Favorite Category
+            <DialogTitle className="text-base text-center">
+              Delete &quot;{deleteFavoriteConfirmation?.favorite?.name}&quot;?
             </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              Are you sure you want to delete the favorite category{' '}
-              <strong>&quot;{deleteFavoriteConfirmation?.favorite?.name}&quot;</strong>?
-              <span className="block mt-2 text-red-600 font-medium">
-                This will permanently remove it from your favorites. You can always add it back
-                later if needed.
-              </span>
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">
+                  This removes it from your saved favorites.
+                </p>
+                <p className="text-gray-600 text-xs">You can always save it again later.</p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
@@ -3043,43 +2921,34 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
       >
         <DialogContent className="max-w-80 rounded-none gap-2">
           <DialogHeader className="gap-1">
-            <DialogTitle className="text-base flex items-center gap-2 justify-center text-center">
-              <Lock className="w-5 h-5 text-blue-500" />
-              Limits Locked
-            </DialogTitle>
-            <DialogDescription className="text-sm text-center">
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-3 text-left">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-xs text-blue-700 mb-2">
-                      Some categories were already used today, so their limits couldn&apos;t be
-                      increased:
-                    </p>
-                    <div className="space-y-1">
-                      {restoredCategoriesInfo?.categories.map((rc, index) => (
-                        <p key={index} className="text-xs text-blue-800 font-medium">
-                          {rc.name} — {rc.originalLimit}{' '}
-                          <span className="font-normal text-blue-600">
-                            (instead of {rc.newLimit})
-                          </span>
-                        </p>
-                      ))}
-                    </div>
-                    <p className="text-xs text-blue-600 mt-3">
-                      Limits reset at midnight. You can still lower limits or edit other settings.
-                    </p>
+            <DialogTitle className="text-base text-center">Some Limits Were Locked</DialogTitle>
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">
+                  Used categories cannot increase limits today.
+                </p>
+                <div className="p-2 bg-gray-50 rounded border text-left">
+                  <div className="space-y-1">
+                    {restoredCategoriesInfo?.categories.map((rc, index) => (
+                      <p key={index} className="text-xs text-gray-800">
+                        <span className="font-medium">{rc.name}</span> — kept at {rc.originalLimit}{' '}
+                        <span className="text-gray-500">(not {rc.newLimit})</span>
+                      </p>
+                    ))}
                   </div>
                 </div>
+                <p className="text-gray-600 text-xs">
+                  Limits reset at midnight. You can still decrease limits.
+                </p>
               </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
             <Button
               onClick={() => setRestoredCategoriesInfo(null)}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 h-9 text-sm"
+              className="flex-1 bg-gray-500 hover:bg-gray-600 h-9 text-sm"
             >
-              Got it
+              Got It
             </Button>
           </div>
         </DialogContent>
