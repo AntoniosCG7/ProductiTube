@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ProductiTube - YouTube Limits & Focus Tool",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Your YouTube, Your Rules",
   "permissions": ["storage", "tabs", "activeTab"],
   "host_permissions": ["*://*.youtube.com/*"],
