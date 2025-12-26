@@ -274,6 +274,10 @@ const formatTime = (minutes: number): string => {
   }
 };
 
+const isTimeLimitReached = (timeWatched: number, timeLimit: number): boolean => {
+  return Math.round(timeWatched * 100) >= Math.round(timeLimit * 100);
+};
+
 // ==================== STATE MANAGEMENT ====================
 /**
  * Clear all pending timeouts
@@ -407,7 +411,7 @@ const areAllCategoryLimitsExhausted = (
     if (isTimeMode) {
       const usedValue = getTimeWatchedToday(category.id);
       const limitValue = category.dailyTimeLimit || 60;
-      return usedValue >= limitValue;
+      return isTimeLimitReached(usedValue, limitValue);
     } else {
       const usedValue = getVideosWatchedToday(category.id);
       const limitValue = category.dailyLimitCount;
@@ -990,7 +994,7 @@ const createCategoryModal = (): HTMLElement => {
               if (isTimeMode) {
                 usedValue = getTimeWatchedToday(category.id);
                 limitValue = category.dailyTimeLimit || 60;
-                isLimitReached = usedValue >= limitValue;
+                isLimitReached = isTimeLimitReached(usedValue, limitValue);
                 remaining = limitValue - usedValue;
                 remainingText = isLimitReached ? 'Time reached' : `${formatTime(remaining)} left`;
               } else {
@@ -1869,7 +1873,7 @@ const handleCategorySelection = async (categoryId: string): Promise<void> => {
 
       const timeWatched = getTimeWatchedToday(categoryId);
       const timeLimit = category.dailyTimeLimit || 60;
-      const hasReachedLimit = timeWatched >= timeLimit;
+      const hasReachedLimit = isTimeLimitReached(timeWatched, timeLimit);
 
       if (hasReachedLimit) {
         showLimitReachedMessage(category);
@@ -2800,7 +2804,7 @@ const handleVideoLoad = async (): Promise<void> => {
       const timeLimit = state.settings?.totalDailyTimeLimit || 60;
       const timeWatched = getTotalTimeWatchedToday();
 
-      if (timeWatched >= timeLimit) {
+      if (isTimeLimitReached(timeWatched, timeLimit)) {
         let modalShown = false;
         let blockedVideo: HTMLVideoElement | null = null;
 
