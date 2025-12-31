@@ -30,6 +30,7 @@ import {
   Lock,
 } from 'lucide-react';
 import type { LimitsTabProps, VideoCategory, FavoriteCategory } from '@/types';
+import { getTimeUntilMidnightLabel, isActiveModeFullyExhausted } from '@/popup/utils/limitsLock';
 
 const PRESET_CATEGORIES = [
   { name: 'Education', color: '#10b981' },
@@ -111,6 +112,10 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     categories: Array<{ name: string; originalLimit: number | string; newLimit: number | string }>;
   } | null>(null);
   const [lastCategoryBlockedDialog, setLastCategoryBlockedDialog] = useState(false);
+  const [modeSwitchLockedDialog, setModeSwitchLockedDialog] = useState<{
+    attemptedMode: LimitMode;
+    isOpen: boolean;
+  } | null>(null);
 
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
 
@@ -627,9 +632,28 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     return lastDisabled.toDateString() === today.toDateString();
   };
 
-  /**
-   * Check if total-time mode was activated today
-   */
+  const getModeDisplayName = (mode: LimitMode): string => {
+    switch (mode) {
+      case 'video-count':
+        return 'Video Count by Category';
+      case 'time-category':
+        return 'Time Limit by Category';
+      case 'time-total':
+        return 'Total Time-Based Limit';
+      default:
+        return 'Limits';
+    }
+  };
+
+  const getActiveModeLockReason = (): string => {
+    if (activeMode === 'time-total') {
+      return "You've reached your total daily time limit for today.";
+    }
+
+    const limitKind = activeMode === 'time-category' ? 'time limit' : 'video limit';
+    return `You've reached the ${limitKind} for all active categories today.`;
+  };
+
   const isTotalTimeModeActivatedToday = (): boolean => {
     if (!limitsSettings.totalTimeModeActivatedAt) return false;
     const activatedAt = new Date(limitsSettings.totalTimeModeActivatedAt);
@@ -645,6 +669,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleModeToggle = (mode: LimitMode, enabled: boolean) => {
+    const isAttemptingModeSwitch = enabled && mode !== activeMode;
+    if (isAttemptingModeSwitch && isActiveModeFullyExhausted(limitsSettings, activeMode)) {
+      setModeSwitchLockedDialog({ attemptedMode: mode, isOpen: true });
+      return;
+    }
+
     if (!enabled && wasDisabledToday()) {
       setModeConfirmation({
         mode,
@@ -665,6 +695,13 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     if (!modeConfirmation) return;
 
     const { mode, enabled } = modeConfirmation;
+
+    const isAttemptingModeSwitch = enabled && mode !== activeMode;
+    if (isAttemptingModeSwitch && isActiveModeFullyExhausted(limitsSettings, activeMode)) {
+      setModeConfirmation(null);
+      setModeSwitchLockedDialog({ attemptedMode: mode, isOpen: true });
+      return;
+    }
 
     if (!enabled && wasDisabledToday()) {
       setModeConfirmation(null);
@@ -2641,6 +2678,42 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
           <div className="flex gap-2 mt-2">
             <Button
               onClick={() => setLastCategoryBlockedDialog(false)}
+              className="flex-1 h-9 text-sm bg-gray-500 hover:bg-gray-600"
+            >
+              Got It
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mode Switch Locked Dialog */}
+      <Dialog
+        open={modeSwitchLockedDialog?.isOpen || false}
+        onOpenChange={(open) => !open && setModeSwitchLockedDialog(null)}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base text-center">Mode switching locked</DialogTitle>
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">{getActiveModeLockReason()}</p>
+                <p className="text-gray-600 text-xs">
+                  You can&apos;t switch from <strong>{getModeDisplayName(activeMode)}</strong> to{' '}
+                  <strong>
+                    {getModeDisplayName(modeSwitchLockedDialog?.attemptedMode || activeMode)}
+                  </strong>{' '}
+                  right now.
+                </p>
+                <p className="text-gray-600 text-xs">
+                  To prevent bypassing, switching modes is locked until midnight (resets in{' '}
+                  <strong>{getTimeUntilMidnightLabel()}</strong>).
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={() => setModeSwitchLockedDialog(null)}
               className="flex-1 h-9 text-sm bg-gray-500 hover:bg-gray-600"
             >
               Got It
