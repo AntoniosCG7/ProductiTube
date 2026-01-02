@@ -47,6 +47,7 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   const [activeMode, setActiveMode] = useState<LimitMode>(
     limitsSettings.activeMode || 'video-count'
   );
+  const [categoryCreationLockedDialogOpen, setCategoryCreationLockedDialogOpen] = useState(false);
 
   useEffect(() => {
     if (limitsSettings.activeMode) {
@@ -117,9 +118,18 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
     isOpen: boolean;
   } | null>(null);
 
+  const isCategoryMode = activeMode === 'video-count' || activeMode === 'time-category';
+  const isCategoryModeExhausted =
+    isCategoryMode && isActiveModeFullyExhausted(limitsSettings, activeMode);
+
   const hasFavorites = (limitsSettings.favoriteCategories || []).length > 0;
 
   const handleLoadFavorites = () => {
+    if (isCategoryModeExhausted) {
+      setCategoryCreationLockedDialogOpen(true);
+      return;
+    }
+
     const favorites = limitsSettings.favoriteCategories || [];
     if (favorites.length === 0) return;
 
@@ -144,6 +154,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleLoadSelectedFavorites = () => {
+    if (isCategoryModeExhausted) {
+      setCategoryCreationLockedDialogOpen(true);
+      return;
+    }
+
     if (selectedFavorites.length === 0) return;
 
     const favorites = limitsSettings.favoriteCategories || [];
@@ -324,6 +339,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
 
   const confirmLoadFavorites = async () => {
     if (!loadFavoritesConfirmation) return;
+
+    if (isCategoryModeExhausted) {
+      setLoadFavoritesConfirmation(null);
+      setCategoryCreationLockedDialogOpen(true);
+      return;
+    }
 
     const currentModeCategories = getCurrentModeCategories();
     const { favoritesToAdd } = loadFavoritesConfirmation;
@@ -838,6 +859,12 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleAddCategory = async () => {
+    if (isCategoryModeExhausted) {
+      setCategoryCreationLockedDialogOpen(true);
+      setIsAddDialogOpen(false);
+      return;
+    }
+
     if (newCategory.name.trim() && !validateForm()) {
       return;
     }
@@ -1087,6 +1114,11 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
   };
 
   const handleDialogOpenChange = (open: boolean) => {
+    if (open && isCategoryModeExhausted) {
+      setCategoryCreationLockedDialogOpen(true);
+      return;
+    }
+
     setIsAddDialogOpen(open);
     if (!open) {
       clearValidationErrors();
@@ -2714,6 +2746,39 @@ export const LimitsTab: React.FC<LimitsTabProps> = ({ limitsSettings, updateLimi
           <div className="flex gap-2 mt-2">
             <Button
               onClick={() => setModeSwitchLockedDialog(null)}
+              className="flex-1 h-9 text-sm bg-gray-500 hover:bg-gray-600"
+            >
+              Got It
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Creation Locked Dialog */}
+      <Dialog
+        open={categoryCreationLockedDialogOpen}
+        onOpenChange={(open) => !open && setCategoryCreationLockedDialogOpen(false)}
+      >
+        <DialogContent className="max-w-80 rounded-none gap-2">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-base text-center">Today&apos;s limits reached</DialogTitle>
+            <DialogDescription className="text-sm">
+              <div className="text-center space-y-3">
+                <p className="text-gray-900 font-medium">
+                  You&apos;ve reached today&apos;s boundary for all active categories.
+                </p>
+                <p className="text-gray-600 text-xs">
+                  There&apos;s nothing more to configure right now.
+                </p>
+                <p className="text-gray-600 text-xs">
+                  Resets at midnight (in <strong>{getTimeUntilMidnightLabel()}</strong>).
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={() => setCategoryCreationLockedDialogOpen(false)}
               className="flex-1 h-9 text-sm bg-gray-500 hover:bg-gray-600"
             >
               Got It
