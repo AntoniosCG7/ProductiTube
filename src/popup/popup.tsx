@@ -20,12 +20,42 @@ const Popup: React.FC = () => {
   const [settings, updateSettings, error, isRateLimited, resetSettings] = useSettings();
   const { limitsSettings, updateLimitsSettings, error: limitsError } = useLimitsSettings();
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const [needsScroll, setNeedsScroll] = React.useState(false);
+
+  const checkScrollNeeded = React.useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollHeight, clientHeight } = scrollContainerRef.current;
+      setNeedsScroll(scrollHeight > clientHeight + 1);
+    }
+  }, []);
 
   React.useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = 0;
     }
   }, [activeTab]);
+
+  React.useEffect(() => {
+    checkScrollNeeded();
+    const timeoutId = setTimeout(checkScrollNeeded, 50);
+
+    const resizeObserver = new ResizeObserver(() => {
+      checkScrollNeeded();
+    });
+
+    if (scrollContainerRef.current) {
+      resizeObserver.observe(scrollContainerRef.current);
+      const firstChild = scrollContainerRef.current.firstElementChild;
+      if (firstChild) {
+        resizeObserver.observe(firstChild);
+      }
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      resizeObserver.disconnect();
+    };
+  }, [activeTab, limitsSettings, checkScrollNeeded]);
 
   const updateSetting = React.useCallback(
     async (key: keyof Settings, value: boolean) => {
@@ -69,7 +99,12 @@ const Popup: React.FC = () => {
         </Alert>
       )}
 
-      <div ref={scrollContainerRef} className="px-4 flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
+      <div
+        ref={scrollContainerRef}
+        className={`px-4 flex-1 overflow-x-hidden bg-gray-50 min-h-0 ${
+          needsScroll ? 'overflow-y-auto' : 'overflow-y-hidden'
+        }`}
+      >
         {activeTab === 'controls' && (
           <ControlsTab settings={settings} updateSetting={updateSetting} />
         )}
